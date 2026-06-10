@@ -196,10 +196,10 @@ const STUDENTS_LIST_SEED: UserProfile[] = [
 
 const TEACHER_SEED: UserProfile = {
   id: 'usr-teacher-1',
-  first_name: 'Silvia',
-  last_name: 'Garza',
+  first_name: 'Israel',
+  last_name: 'López',
   role: 'teacher',
-  email: 'silvia.garza@iskool.edu.mx',
+  email: 'israel.lopez@iskool.edu.mx',
   created_at: new Date().toISOString(),
   updated_at: new Date().toISOString()
 };
