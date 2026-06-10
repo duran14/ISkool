@@ -435,7 +435,7 @@ export function RpgCombatViewport() {
               <path d="M-15,4 L15,4 L12,25 L-12,25 Z" fill="#6D28D9" />
               {/* Bastón de Mago */}
               <line x1="16" y1="-15" x2="16" y2="25" stroke="#D1D5DB" strokeWidth="2" />
-              <circle cx="16" cy="-16" r="6" fill="#A78BFA" filter="url(#glow-fx)" className={combatState === 'attacking' ? 'animate-pulse' : elenaSub?.status === 'submitted_on_time' ? 'animate-bounce' : ''} />
+              <circle cx="16" cy="-16" r="6" fill="#A78BFA" filter="url(#glow-fx)" className={combatState === 'attacking' ? 'animate-pulse' : elenaSub?.status === 'submitted_on_time' ? 'animate-pulse' : ''} />
               
               {/* Brillo especial en el staff cuando está lista */}
               {elenaSub?.status === 'submitted_on_time' && (
