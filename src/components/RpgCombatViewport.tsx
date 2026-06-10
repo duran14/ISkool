@@ -20,7 +20,7 @@ class RetroSoundEngine {
     }
   }
 
-  public play(type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error') {
+  public play(type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup') {
     this.init();
     if (!this.ctx) return;
     
@@ -135,6 +135,26 @@ class RetroSoundEngine {
         osc.stop(now + 0.26);
         break;
       }
+      case 'powerup': {
+        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
+        const durations = [0.08, 0.08, 0.2];
+        let time = now;
+        notes.forEach((freq, idx) => {
+          if (!this.ctx) return;
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, time);
+          gain.gain.setValueAtTime(0.12, time);
+          gain.gain.exponentialRampToValueAtTime(0.01, time + durations[idx] - 0.01);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(time);
+          osc.stop(time + durations[idx]);
+          time += durations[idx];
+        });
+        break;
+      }
     }
   }
 }
@@ -152,6 +172,8 @@ export function RpgCombatViewport() {
     currentStudent
   } = useGamification();
 
+  const elenaSub = guildSubmissions.find(s => s.student_id === 'std-sec');
+
   const [audioEnabled, setAudioEnabled] = useState(true);
   const [combatState, setCombatState] = useState<'idle' | 'attacking' | 'boss_hurt' | 'victory' | 'defeat'>('idle');
   const [sombraText, setSombraText] = useState('Sombra: ¡El Guardián de Historia custodia el portal! Registren sus evidencias a tiempo para iniciar el ataque sincronizado.');
@@ -166,7 +188,7 @@ export function RpgCombatViewport() {
   const prevBossHp = useRef(guildBoss.hp_actual);
 
   // Reproducir efectos de sonido si el audio está habilitado
-  const playSound = (type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error') => {
+  const playSound = (type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup') => {
     if (audioEnabled) {
       soundEngine.play(type);
     }
@@ -223,6 +245,7 @@ export function RpgCombatViewport() {
   // Simular entrega de Elena
   const handleSimularEntrega = () => {
     submitGuildHomework('std-sec', true);
+    playSound('powerup');
     setSombraText('Sombra: ¡Elena subió su evidencia a tiempo! Ahora el gremio está en sincronía total. ¡Preparen el Ataque Triple!');
   };
 
@@ -397,6 +420,13 @@ export function RpgCombatViewport() {
             <g transform="translate(250, 190)">
               {/* Sombra */}
               <ellipse cx="0" cy="25" rx="22" ry="9" fill="black" opacity="0.4" />
+              {/* Aura de Sincronía / Carga */}
+              {elenaSub?.status === 'submitted_on_time' && (
+                <>
+                  <circle cx="0" cy="-6" r="30" fill="none" stroke="#A78BFA" strokeWidth="2" opacity="0.8" className="animate-ping" />
+                  <ellipse cx="0" cy="25" rx="35" ry="12" fill="none" stroke="#C084FC" strokeWidth="1.5" opacity="0.6" className="animate-pulse" />
+                </>
+              )}
               {/* Cuerpo (Púrpura) */}
               <circle cx="0" cy="-12" r="15" fill="#8B5CF6" stroke="#A78BFA" strokeWidth="2" />
               {/* Visor holográfico */}
@@ -405,7 +435,13 @@ export function RpgCombatViewport() {
               <path d="M-15,4 L15,4 L12,25 L-12,25 Z" fill="#6D28D9" />
               {/* Bastón de Mago */}
               <line x1="16" y1="-15" x2="16" y2="25" stroke="#D1D5DB" strokeWidth="2" />
-              <circle cx="16" cy="-16" r="6" fill="#A78BFA" filter="url(#glow-fx)" className={combatState === 'attacking' ? 'animate-pulse' : ''} />
+              <circle cx="16" cy="-16" r="6" fill="#A78BFA" filter="url(#glow-fx)" className={combatState === 'attacking' ? 'animate-pulse' : elenaSub?.status === 'submitted_on_time' ? 'animate-bounce' : ''} />
+              
+              {/* Brillo especial en el staff cuando está lista */}
+              {elenaSub?.status === 'submitted_on_time' && (
+                <circle cx="16" cy="-16" r="12" fill="none" stroke="#F43F5E" strokeWidth="1.5" className="animate-ping" opacity="0.8" />
+              )}
+              
               <text x="0" y="42" fill="#E9D5FF" fontSize="9" fontWeight="extrabold" textAnchor="middle">Elena (Tú)</text>
             </g>
 

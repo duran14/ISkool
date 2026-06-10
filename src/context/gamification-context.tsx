@@ -749,6 +749,11 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
     setPortfolioItems(prev => [newItem, ...prev]);
 
+    // Si es Elena (Secundaria), enlazar con la entrega del Gremio RPG automáticamente
+    if (activeStudentId === 'std-sec') {
+      submitGuildHomework('std-sec', true);
+    }
+
     // Recompensa de XP
     setAllStats(prev => {
       const s = prev[activeStudentId];
