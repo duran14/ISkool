@@ -171,7 +171,7 @@ export interface StudentAvatar {
   updated_at: string;
 
   // Mascota (Primaria Baja)
-  pet_type?: 'dragon' | 'gatito' | 'osito';
+  pet_type?: 'dragon' | 'lobo' | 'venado' | 'gusano' | 'gatito';
   pet_name?: string;
   pet_hunger?: number;
   pet_happiness?: number;

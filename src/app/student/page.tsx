@@ -19,6 +19,7 @@ export default function StudentDashboard() {
   } = useGamification();
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
+  const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [selectedReviewItem, setSelectedReviewItem] = useState<any>(null);
   const [peerScore, setPeerScore] = useState('9.0');
   const [peerComment, setPeerComment] = useState('');
@@ -47,6 +48,133 @@ export default function StudentDashboard() {
     );
   };
 
+  const renderPetSVG = (type = 'dragon') => {
+    switch (type) {
+      case 'lobo':
+        return (
+          <>
+            <circle cx="50" cy="56" r="23" fill="#9CA3AF" />
+            <circle cx="50" cy="56" r="14" fill="#E5E7EB" />
+            <circle cx="50" cy="36" r="16" fill="#D1D5DB" />
+            <polygon points="34,30 32,14 44,22" fill="#9CA3AF" />
+            <polygon points="36,28 35,18 42,23" fill="#FCA5A5" />
+            <polygon points="66,30 68,14 56,22" fill="#9CA3AF" />
+            <polygon points="64,28 65,18 58,23" fill="#FCA5A5" />
+            <circle cx="38" cy="40" r="5" fill="#F3F4F6" />
+            <circle cx="62" cy="40" r="5" fill="#F3F4F6" />
+            <circle cx="44" cy="33" r="2" fill="#1F2937" />
+            <circle cx="56" cy="33" r="2" fill="#1F2937" />
+            <ellipse cx="50" cy="39" rx="4" ry="2.5" fill="#F3F4F6" />
+            <polygon points="48,38 52,38 50,40" fill="#111827" />
+            <path d="M49 41 Q 50 42.5 51 41" stroke="#111827" strokeWidth="1" fill="none" />
+          </>
+        );
+      case 'venado':
+        return (
+          <>
+            <circle cx="50" cy="56" r="23" fill="#D97706" />
+            <circle cx="42" cy="48" r="2" fill="#FFFFFF" />
+            <circle cx="58" cy="52" r="2" fill="#FFFFFF" />
+            <circle cx="40" cy="58" r="1.5" fill="#FFFFFF" />
+            <circle cx="56" cy="62" r="1.5" fill="#FFFFFF" />
+            <circle cx="50" cy="36" r="16" fill="#F59E0B" />
+            <ellipse cx="33" cy="26" rx="5" ry="10" transform="rotate(-30, 33, 26)" fill="#D97706" />
+            <ellipse cx="33" cy="26" rx="2.5" ry="7" transform="rotate(-30, 33, 26)" fill="#FCA5A5" />
+            <ellipse cx="67" cy="26" rx="5" ry="10" transform="rotate(30, 67, 26)" fill="#D97706" />
+            <ellipse cx="67" cy="26" rx="2.5" ry="7" transform="rotate(30, 67, 26)" fill="#FCA5A5" />
+            <circle cx="43" cy="34" r="2.5" fill="#1F2937" />
+            <circle cx="42.2" cy="33.2" r="0.8" fill="#FFFFFF" />
+            <circle cx="57" cy="34" r="2.5" fill="#1F2937" />
+            <circle cx="56.2" cy="33.2" r="0.8" fill="#FFFFFF" />
+            <ellipse cx="50" cy="40" rx="3" ry="2" fill="#FEF3C7" />
+            <circle cx="50" cy="39" r="1" fill="#111827" />
+          </>
+        );
+      case 'gusano':
+        return (
+          <>
+            <circle cx="38" cy="65" r="12" fill="#EC4899" />
+            <circle cx="46" cy="59" r="11" fill="#F43F5E" />
+            <circle cx="56" cy="55" r="12" fill="#F472B6" />
+            <circle cx="62" cy="40" r="14" fill="#FB7185" />
+            <path d="M58 28 Q 54 20 48 22" stroke="#EC4899" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+            <circle cx="47" cy="22" r="2.5" fill="#FBBF24" />
+            <circle cx="58" cy="38" r="1.5" fill="#FFFFFF" />
+            <circle cx="58" cy="38" r="0.8" fill="#111827" />
+            <circle cx="67" cy="38" r="1.5" fill="#FFFFFF" />
+            <circle cx="67" cy="38" r="0.8" fill="#111827" />
+            <path d="M60 45 Q 64 48 68 44" stroke="#881337" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+          </>
+        );
+      case 'gatito':
+        return (
+          <>
+            <circle cx="50" cy="56" r="23" fill="#F59E0B" />
+            <circle cx="50" cy="58" r="13" fill="#FEF3C7" />
+            <circle cx="50" cy="35" r="16" fill="#FBBF24" />
+            <polygon points="34,26 31,10 45,20" fill="#F59E0B" />
+            <polygon points="36,23 34,14 42,20" fill="#FCA5A5" />
+            <polygon points="66,26 69,10 55,20" fill="#F59E0B" />
+            <polygon points="64,23 66,14 58,20" fill="#FCA5A5" />
+            <circle cx="43" cy="33" r="2" fill="#065F46" />
+            <circle cx="57" cy="33" r="2" fill="#065F46" />
+            <path d="M46 40 Q 50 43 54 40" stroke="#78350F" strokeWidth="1.2" fill="none" />
+            <line x1="33" y1="38" x2="25" y2="36" stroke="#78350F" strokeWidth="1" />
+            <line x1="33" y1="41" x2="24" y2="41" stroke="#78350F" strokeWidth="1" />
+            <line x1="67" y1="38" x2="75" y2="36" stroke="#78350F" strokeWidth="1" />
+            <line x1="67" y1="41" x2="76" y2="41" stroke="#78350F" strokeWidth="1" />
+          </>
+        );
+      case 'dragon':
+      default:
+        return (
+          <>
+            <circle cx="50" cy="55" r="24" fill="#34D399" />
+            <circle cx="50" cy="35" r="16" fill="#6EE7B7" />
+            <circle cx="44" cy="32" r="2" fill="#065F46" />
+            <circle cx="56" cy="32" r="2" fill="#065F46" />
+            <path d="M46 41 Q 50 44 54 41" stroke="#065F46" strokeWidth="1.5" fill="none" />
+            <polygon points="40,22 44,14 47,22" fill="#FBBF24" />
+            <polygon points="60,22 56,14 53,22" fill="#FBBF24" />
+          </>
+        );
+    }
+  };
+
+  const renderPetAccessories = (type = 'dragon', outfit = 'none') => {
+    if (outfit === 'none') return null;
+
+    if (type === 'gusano') {
+      return (
+        <>
+          {outfit === 'hat' && (
+            <polygon points="48,24 62,6 76,24" fill="#B91C1C" />
+          )}
+          {outfit === 'glasses' && (
+            <rect x="50" y="34" width="22" height="4" rx="1" fill="#111827" />
+          )}
+          {outfit === 'cape' && (
+            <path d="M30 60 L 12 85 L 75 85 L 60 60 Z" fill="#4F46E5" opacity="0.8" />
+          )}
+        </>
+      );
+    }
+
+    return (
+      <>
+        {outfit === 'hat' && (
+          <polygon points="32,18 50,0 68,18" fill="#B91C1C" />
+        )}
+        {outfit === 'glasses' && (
+          <rect x="38" y="30" width="24" height="4" rx="1" fill="#111827" />
+        )}
+        {outfit === 'cape' && (
+          <path d="M25 60 L 10 90 L 90 90 L 75 60 Z" fill="#4F46E5" opacity="0.8" />
+        )}
+      </>
+    );
+  };
+
   // --- RENDER 1: PRIMARIA BAJA (MASCOTAS VIRTUALES) ---
   const renderPrimariaBaja = () => {
     // Ropa de mascota seleccionada
@@ -70,32 +198,19 @@ export default function StudentDashboard() {
               {/* Pet SVG */}
               <div className="h-28 w-28 flex items-center justify-center relative bg-emerald-950/20 rounded-full border border-white/10 p-2">
                 <svg viewBox="0 0 100 100" className="w-full h-full filter drop-shadow-md">
-                  {/* Cuerpo Dragon */}
-                  <circle cx="50" cy="55" r="24" fill="#34D399" />
-                  <circle cx="50" cy="35" r="16" fill="#6EE7B7" />
-                  {/* Ojos */}
-                  <circle cx="44" cy="32" r="2" fill="#065F46" />
-                  <circle cx="56" cy="32" r="2" fill="#065F46" />
-                  <path d="M46 41 Q 50 44 54 41" stroke="#065F46" strokeWidth="1.5" fill="none" />
-                  {/* Cuernos */}
-                  <polygon points="40,22 44,14 47,22" fill="#FBBF24" />
-                  <polygon points="60,22 56,14 53,22" fill="#FBBF24" />
-                  
-                  {/* Accesorios / Outfit de Mascota */}
-                  {petOutfit === 'hat' && (
-                    <polygon points="32,18 50,0 68,18" fill="#B91C1C" />
-                  )}
-                  {petOutfit === 'glasses' && (
-                    <rect x="38" y="30" width="24" height="4" rx="1" fill="#111827" />
-                  )}
-                  {petOutfit === 'cape' && (
-                    <path d="M25 60 L 10 90 L 90 90 L 75 60 Z" fill="#4F46E5" opacity="0.8" />
-                  )}
+                  {renderPetSVG(avatar.pet_type || 'dragon')}
+                  {renderPetAccessories(avatar.pet_type || 'dragon', petOutfit)}
                 </svg>
               </div>
 
               {/* Ropa selector */}
               <div className="flex gap-1.5 mt-2">
+                <button
+                  onClick={() => setIsPetModalOpen(true)}
+                  className="px-2 py-0.5 rounded text-[9px] font-bold bg-white text-emerald-700 hover:bg-emerald-50"
+                >
+                  Mascota
+                </button>
                 <button
                   onClick={() => changeAvatar({ pet_outfit: 'hat' })}
                   className={`px-2 py-0.5 rounded text-[9px] font-bold ${petOutfit === 'hat' ? 'bg-white text-emerald-700' : 'bg-white/25 text-white'}`}
@@ -592,6 +707,61 @@ export default function StudentDashboard() {
         isOpen={isCustomizerOpen}
         onClose={() => setIsCustomizerOpen(false)}
       />
+
+      {isPetModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl p-6 border border-zinc-200 dark:border-zinc-800">
+            <h3 className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
+              ✨ Elige tu Mascota y su Nombre
+            </h3>
+            
+            {/* Opciones de Mascota */}
+            <div className="grid grid-cols-5 gap-2 mb-6">
+              {[
+                { type: 'dragon', label: 'Dragón', emoji: '🐉' },
+                { type: 'lobo', label: 'Lobo', emoji: '🐺' },
+                { type: 'venado', label: 'Venado', emoji: '🦌' },
+                { type: 'gusano', label: 'Gusano', emoji: '🐛' },
+                { type: 'gatito', label: 'Gato', emoji: '🐱' }
+              ].map(option => (
+                <button
+                  key={option.type}
+                  onClick={() => changeAvatar({ pet_type: option.type as any })}
+                  className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all ${
+                    (avatar.pet_type || 'dragon') === option.type
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/35 text-emerald-700 dark:text-emerald-400 font-bold'
+                      : 'border-zinc-200 dark:border-zinc-800 hover:border-emerald-300'
+                  }`}
+                >
+                  <span className="text-2xl">{option.emoji}</span>
+                  <span className="text-[9px] mt-1 text-center truncate w-full">{option.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Nombre de la Mascota */}
+            <div className="mb-6">
+              <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block mb-1.5">Nombre de la Mascota</label>
+              <input
+                type="text"
+                value={avatar.pet_name || ''}
+                onChange={(e) => changeAvatar({ pet_name: e.target.value })}
+                placeholder="Ej. Llamita"
+                className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsPetModalOpen(false)}
+                className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold shadow-md shadow-emerald-500/10 transition-all"
+              >
+                ¡Listo!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
