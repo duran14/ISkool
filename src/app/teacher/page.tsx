@@ -8,6 +8,7 @@ import {
   AlertCircle, Clock, Heart, MessageSquare, 
   Send, ThumbsUp, Star, Award, BookOpen
 } from 'lucide-react';
+import { FormattedDate } from '@/components/FormattedDate';
 
 export default function TeacherDashboard() {
   const { portfolioItems, reviewPortfolioItem, currentTeacher } = useGamification();
@@ -120,9 +121,11 @@ export default function TeacherDashboard() {
                           <p className="text-[9px] text-zinc-400 uppercase mt-0.5">Grupo: 4º A | {item.subject?.name}</p>
                         </div>
                       </div>
-                      <span className="text-[10px] text-zinc-400" suppressHydrationWarning>
-                        Entregado el {new Date(item.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <FormattedDate
+                        date={item.created_at}
+                        prefix="Entregado el "
+                        className="text-[10px] text-zinc-400"
+                      />
                     </div>
 
                     {/* Contenido de Evidencia */}

@@ -14,7 +14,9 @@ import {
   PortfolioItemStatus,
   FeedbackAuthorRole,
   Subject,
-  UserProfile
+  UserProfile,
+  GuildBoss,
+  GuildMemberSubmission
 } from '../types';
 
 interface GamificationContextProps {
@@ -33,6 +35,13 @@ interface GamificationContextProps {
   activeStudentId: string;
   currentTeacher: UserProfile;
   currentParent: UserProfile;
+
+  // RPG Boss and Guild Combat (Secundaria)
+  guildBoss: GuildBoss;
+  guildSubmissions: GuildMemberSubmission[];
+  triggerGuildAttack: (damage: number) => void;
+  resetGuildBoss: () => void;
+  submitGuildHomework: (studentId: string, onTime: boolean) => void;
   
   // Acciones
   switchStudent: (studentId: string) => void;
@@ -298,6 +307,20 @@ const PORTFOLIO_SEED: PortfolioItem[] = [
   }
 ];
 
+const BOSS_SEED: GuildBoss = {
+  id: 'boss-historia',
+  name: 'Guardián de Historia',
+  hp_max: 200,
+  hp_actual: 150,
+  xp_reward: 500
+};
+
+const GUILD_SUBMISSIONS_SEED: GuildMemberSubmission[] = [
+  { student_id: 'std-pb', student_name: 'Santi', avatar_outfit: 'explorer', class_name: 'Guerrero', status: 'submitted_on_time' },
+  { student_id: 'std-pa', student_name: 'Lucas', avatar_outfit: 'space_suit', class_name: 'Explorador', status: 'submitted_on_time' },
+  { student_id: 'std-sec', student_name: 'Elena', avatar_outfit: 'purple', class_name: 'Mago', status: 'pending' }
+];
+
 export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Guardar qué estudiante está activo (por defecto Lucas)
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
@@ -353,6 +376,22 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return [];
   });
 
+  const [guildBoss, setGuildBoss] = useState<GuildBoss>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_guild_boss');
+      return saved ? JSON.parse(saved) : BOSS_SEED;
+    }
+    return BOSS_SEED;
+  });
+
+  const [guildSubmissions, setGuildSubmissions] = useState<GuildMemberSubmission[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_guild_submissions');
+      return saved ? JSON.parse(saved) : GUILD_SUBMISSIONS_SEED;
+    }
+    return GUILD_SUBMISSIONS_SEED;
+  });
+
   // Obtener Perfil, Stats y Avatar actuales
   const currentStudent = STUDENTS_LIST_SEED.find(s => s.id === activeStudentId) || STUDENTS_LIST_SEED[1];
   const stats = allStats[activeStudentId] || STATS_MAP_SEED['std-pa'];
@@ -382,6 +421,43 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem('iskool_attempts', JSON.stringify(questAttempts));
   }, [questAttempts]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_guild_boss', JSON.stringify(guildBoss));
+  }, [guildBoss]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_guild_submissions', JSON.stringify(guildSubmissions));
+  }, [guildSubmissions]);
+
+  // Lógica RPG Combate Colaborativo
+  const triggerGuildAttack = (damage: number) => {
+    setGuildBoss(prev => {
+      const newHp = Math.max(0, prev.hp_actual - damage);
+      return {
+        ...prev,
+        hp_actual: newHp
+      };
+    });
+  };
+
+  const resetGuildBoss = () => {
+    setGuildBoss(BOSS_SEED);
+    setGuildSubmissions(GUILD_SUBMISSIONS_SEED);
+  };
+
+  const submitGuildHomework = (studentId: string, onTime: boolean) => {
+    setGuildSubmissions(prev => prev.map(member => {
+      if (member.student_id === studentId) {
+        return {
+          ...member,
+          status: onTime ? 'submitted_on_time' : 'submitted_late',
+          submitted_at: new Date().toISOString()
+        };
+      }
+      return member;
+    }));
+  };
 
   // Cambiar Estudiante Activo
   const switchStudent = (studentId: string) => {
@@ -820,6 +896,8 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.removeItem('iskool_student_badges');
     localStorage.removeItem('iskool_portfolio');
     localStorage.removeItem('iskool_attempts');
+    localStorage.removeItem('iskool_guild_boss');
+    localStorage.removeItem('iskool_guild_submissions');
     setActiveStudentId('std-pa');
     setAllStats(STATS_MAP_SEED);
     setAllAvatars(AVATAR_MAP_SEED);
@@ -829,6 +907,8 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     ]);
     setPortfolioItems(PORTFOLIO_SEED);
     setQuestAttempts([]);
+    setGuildBoss(BOSS_SEED);
+    setGuildSubmissions(GUILD_SUBMISSIONS_SEED);
   };
 
   return (
@@ -853,6 +933,12 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       activeStudentId,
       currentTeacher: TEACHER_SEED,
       currentParent: PARENT_SEED,
+      
+      guildBoss,
+      guildSubmissions,
+      triggerGuildAttack,
+      resetGuildBoss,
+      submitGuildHomework,
       
       switchStudent,
       changeAvatar,

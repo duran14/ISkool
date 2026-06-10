@@ -7,6 +7,7 @@ import {
   Heart, MessageSquare, Send, CheckCircle2, 
   Trophy, Flame, Coins, Smile, Landmark, Award, Mic
 } from 'lucide-react';
+import { FormattedDate } from '@/components/FormattedDate';
 
 export default function ParentDashboard() {
   const { 
@@ -144,9 +145,12 @@ export default function ParentDashboard() {
                     <span className="px-2 py-0.5 rounded bg-blue-50 text-[10px] font-bold text-blue-600 dark:bg-blue-950/20 dark:text-blue-400">
                       {item.subject?.name}
                     </span>
-                    <span className="text-[10px] text-zinc-400" suppressHydrationWarning>
-                      Entregado el {new Date(item.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                    </span>
+                    <FormattedDate
+                      date={item.created_at}
+                      prefix="Entregado el "
+                      options={{ day: 'numeric', month: 'short' }}
+                      className="text-[10px] text-zinc-400"
+                    />
                   </div>
 
                   {/* Contenido */}
@@ -205,9 +209,11 @@ export default function ParentDashboard() {
                                 </strong>
                                 <span className="ml-1 text-zinc-700 dark:text-zinc-300">"{fb.feedback_text}"</span>
                               </div>
-                              <span className="text-[9px] text-zinc-400" suppressHydrationWarning>
-                                {new Date(fb.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}
-                              </span>
+                              <FormattedDate
+                                date={fb.created_at}
+                                options={{ day: 'numeric', month: 'short' }}
+                                className="text-[9px] text-zinc-400"
+                              />
                             </div>
                           );
                         })}

@@ -300,3 +300,21 @@ export interface PortfolioFeedback {
   author_profile?: UserProfile; // Opcional relación
 }
 
+export interface GuildBoss {
+  id: string;
+  name: string;
+  hp_max: number;
+  hp_actual: number;
+  xp_reward: number;
+}
+
+export interface GuildMemberSubmission {
+  student_id: string;
+  student_name: string;
+  avatar_outfit: string;
+  class_name: string;
+  status: 'pending' | 'submitted_on_time' | 'submitted_late';
+  submitted_at?: string;
+}
+
+

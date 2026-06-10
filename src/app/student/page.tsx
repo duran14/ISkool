@@ -4,10 +4,11 @@ import React, { useState } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { Header } from '@/components/Header';
 import { AvatarCustomizer } from '@/components/AvatarCustomizer';
+import { RpgCombatViewport } from '@/components/RpgCombatViewport';
 import { 
   Flame, Coins, Sparkles, Compass, Trophy, Star, ArrowRight, 
   Lock, Heart, HelpCircle, Gamepad2, Dumbbell, Brain, Shield,
-  FileText, Landmark, User, ExternalLink, Award, Sparkle, Users
+  FileText, Landmark, User, ExternalLink, Award, Sparkle, Users, Swords
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -495,6 +496,15 @@ export default function StudentDashboard() {
             </div>
 
           </div>
+        </div>
+
+        {/* Campo de Batalla del Gremio */}
+        <div className="flex flex-col gap-4">
+          <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <Swords className="h-5 w-5 text-purple-500" />
+            Arena del Gremio: Batalla Sincrónica
+          </h2>
+          <RpgCombatViewport />
         </div>
 
         {/* Tablero de Gremios / Contratos de Secundaria */}

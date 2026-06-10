@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { Header } from '@/components/Header';
 import { FileImage, Mic, HelpCircle, CheckCircle2, AlertCircle, Clock, Heart, MessageSquare } from 'lucide-react';
+import { FormattedDate } from '@/components/FormattedDate';
 
 export default function StudentPortfolio() {
   const { portfolioItems } = useGamification();
@@ -73,9 +74,11 @@ export default function StudentPortfolio() {
                       <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 uppercase tracking-wider">
                         {item.subject?.name}
                       </span>
-                      <span className="text-[10px] text-zinc-400 font-medium" suppressHydrationWarning>
-                        Subido el {new Date(item.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                      </span>
+                      <FormattedDate
+                        date={item.created_at}
+                        prefix="Subido el "
+                        className="text-[10px] text-zinc-400 font-medium"
+                      />
                     </div>
                     {getStatusBadge(item.status)}
                   </div>
@@ -169,9 +172,10 @@ export default function StudentPortfolio() {
                                       {isTeacher ? 'Maestro' : isParent ? 'Mamá/Papá' : 'Alumno'}
                                     </span>
                                   </div>
-                                  <span className="text-[10px] text-zinc-400" suppressHydrationWarning>
-                                    {new Date(fb.created_at).toLocaleDateString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
-                                  </span>
+                                  <FormattedDate
+                                    date={fb.created_at}
+                                    className="text-[10px] text-zinc-400"
+                                  />
                                 </div>
                                 <p className="text-zinc-700 dark:text-zinc-300 leading-normal">{fb.feedback_text}</p>
                                 
