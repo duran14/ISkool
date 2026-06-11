@@ -50,7 +50,21 @@ interface GamificationContextProps {
   submitPortfolioItem: (title: string, description: string, fileUrl: string, fileType: any, selfReflection: string, questId?: string, subjectId?: string) => void;
   addPortfolioFeedback: (itemId: string, text: string, role: FeedbackAuthorRole, authorId: string) => void;
   addReaction: (itemId: string, roleCategory: string, emoji: string) => void;
-  reviewPortfolioItem: (itemId: string, status: PortfolioItemStatus, comment: string, xpAward?: number) => void;
+  reviewPortfolioItem: (
+    itemId: string,
+    status: PortfolioItemStatus,
+    comment: string,
+    xpAward?: number,
+    campos_formativos?: string[],
+    pdas?: string[],
+    ejes_articuladores?: string[],
+    xp_breakdown?: {
+      scientific?: number;
+      critical?: number;
+      collaborative?: number;
+      communication?: number;
+    }
+  ) => void;
   
   // Acciones Específicas por Nivel
   feedPet: () => void;
@@ -841,7 +855,21 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   };
 
   // Evaluar (Profesor)
-  const reviewPortfolioItem = (itemId: string, status: PortfolioItemStatus, comment: string, xpAward = 100) => {
+  const reviewPortfolioItem = (
+    itemId: string,
+    status: PortfolioItemStatus,
+    comment: string,
+    xpAward = 100,
+    campos_formativos?: string[],
+    pdas?: string[],
+    ejes_articuladores?: string[],
+    xp_breakdown?: {
+      scientific?: number;
+      critical?: number;
+      collaborative?: number;
+      communication?: number;
+    }
+  ) => {
     const newFeedback: PortfolioFeedback = {
       id: `fb-${Date.now()}`,
       portfolio_item_id: itemId,
@@ -862,6 +890,10 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
           ...item,
           status: status,
           feedbacks: [...(item.feedbacks || []), newFeedback],
+          campos_formativos,
+          pdas,
+          ejes_articuladores,
+          xp_breakdown,
           updated_at: new Date().toISOString()
         };
       }

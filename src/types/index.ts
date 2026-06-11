@@ -277,6 +277,19 @@ export interface PortfolioItem {
   peer_review_score?: number;
   peer_review_comments?: string;
   
+  // Metadatos NEM
+  campos_formativos?: string[];
+  pdas?: string[];
+  ejes_articuladores?: string[];
+  
+  // Desglose de XP
+  xp_breakdown?: {
+    scientific?: number;
+    critical?: number;
+    collaborative?: number;
+    communication?: number;
+  };
+  
   created_at: string;
   updated_at: string;
 

@@ -127,6 +127,73 @@ export default function StudentPortfolio() {
                           </p>
                         </div>
                       )}
+
+                      {/* Alineación NEM del Profesor */}
+                      {(item.campos_formativos || item.ejes_articuladores || item.pdas) && (
+                        <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50 flex flex-col gap-3">
+                          <h4 className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Alineación Estructural (NEM)</h4>
+                          
+                          {item.campos_formativos && item.campos_formativos.length > 0 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-medium text-zinc-400">Campos Formativos:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {item.campos_formativos.map((campo, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/10">
+                                    {campo}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {item.ejes_articuladores && item.ejes_articuladores.length > 0 && (
+                            <div className="flex flex-col gap-1">
+                              <span className="text-[9px] font-medium text-zinc-400">Ejes Articuladores:</span>
+                              <div className="flex flex-wrap gap-1">
+                                {item.ejes_articuladores.map((eje, idx) => (
+                                  <span key={idx} className="px-2 py-0.5 rounded-md text-[9px] font-bold bg-zinc-100 text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200">
+                                    {eje}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {item.pdas && item.pdas.length > 0 && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-[9px] font-medium text-zinc-400">PDA Alcanzado:</span>
+                              <p className="text-[10.5px] font-semibold text-zinc-805 dark:text-zinc-200 leading-normal bg-white dark:bg-zinc-900 p-2 rounded-lg border border-zinc-100 dark:border-zinc-850">
+                                {item.pdas[0]}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Desglose de XP Obtenido */}
+                      {item.xp_breakdown && (
+                        <div className="p-4 rounded-2xl bg-amber-50/25 dark:bg-amber-950/10 border border-amber-100/40 dark:border-amber-900/20 flex flex-col gap-2">
+                          <h4 className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wide">Desglose de Experiencia (XP)</h4>
+                          <div className="grid grid-cols-2 gap-2 text-[10px] font-bold">
+                            <div className="flex justify-between border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-1">
+                              <span className="text-zinc-500">🔬 Científico:</span>
+                              <span className="text-indigo-600 dark:text-indigo-400">+{item.xp_breakdown.scientific} XP</span>
+                            </div>
+                            <div className="flex justify-between border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-1">
+                              <span className="text-zinc-500">🧠 Crítico:</span>
+                              <span className="text-purple-600 dark:text-purple-400">+{item.xp_breakdown.critical} XP</span>
+                            </div>
+                            <div className="flex justify-between border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-1">
+                              <span className="text-zinc-500">🤝 Colaborativo:</span>
+                              <span className="text-emerald-600 dark:text-emerald-400">+{item.xp_breakdown.collaborative} XP</span>
+                            </div>
+                            <div className="flex justify-between border-b border-dashed border-zinc-200 dark:border-zinc-800 pb-1">
+                              <span className="text-zinc-500">💬 Comunicación:</span>
+                              <span className="text-pink-600 dark:text-pink-400">+{item.xp_breakdown.communication} XP</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
 
