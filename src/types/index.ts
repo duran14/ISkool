@@ -330,4 +330,75 @@ export interface GuildMemberSubmission {
   submitted_at?: string;
 }
 
+export interface SchoolSettings {
+  isConfigured: boolean;
+  name: string;
+  website?: string;
+  logoUrl?: string;
+  cct?: string;
+  address?: string;
+  phone?: string;
+  coordinators: string[];
+  teachers: string[];
+  themeColors: {
+    primary: string;    // Color principal HSL o HEX
+    secondary: string;  // Color secundario HSL o HEX
+    accent: string;     // Color de acento HSL o HEX
+  };
+}
+
+export interface DetailedStudent {
+  id: string;
+  first_name: string;
+  second_name?: string;
+  last_name_1: string;
+  last_name_2?: string;
+  birth_date: string;
+  curp?: string;
+  enrollment_id?: string;
+  gender?: string;
+  shift?: 'matutino' | 'vespertino' | 'completo';
+  status: 'activo' | 'inactivo' | 'baja' | 'suspendido';
+  previous_school?: string;
+  photo_url?: string;
+  
+  // Contacto
+  address?: string;
+  phone?: string;
+  email?: string;
+  
+  // Padres / Tutores
+  father_name?: string;
+  mother_name?: string;
+  tutor_name?: string;
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  
+  // Médicos
+  blood_type?: string;
+  medical_notes?: string;
+  
+  // Académicos
+  academic_notes?: string;
+  level: 'primaria' | 'secundaria' | 'preparatoria';
+  grade: string;
+  group_id?: string;
+
+  // Nuevos Campos de Expediente
+  pending_payments?: string[];
+  behavior_reports?: { date: string; description: string; reporter: string }[];
+  teacher_notes?: { date: string; note: string; teacher_name: string }[];
+}
+
+export interface ClassSchedule {
+  id: string;
+  groupId: string;
+  subjectId: string;
+  teacherId: string;
+  dayOfWeek: 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes';
+  timeSlot: string;
+}
+
+
+
 

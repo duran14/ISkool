@@ -35,7 +35,7 @@ export default function Home() {
         </div>
 
         {/* Portales de Acceso */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-4xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
           
           {/* Tarjeta Estudiante */}
           <Link
@@ -108,6 +108,31 @@ export default function Home() {
 
             <div className="mt-8 flex items-center gap-1.5 text-xs font-bold text-rose-600 dark:text-rose-400">
               Entrar como Tutor
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Tarjeta Coordinador */}
+          <Link
+            href="/coordinator"
+            className="group relative flex flex-col justify-between p-6 rounded-3xl border border-zinc-200/80 bg-white hover:border-violet-500 hover:shadow-xl hover:shadow-violet-500/5 transition-all dark:border-zinc-800/80 dark:bg-zinc-900/50 dark:hover:border-violet-500"
+          >
+            <div className="flex flex-col gap-4">
+              <div className="p-3 rounded-2xl bg-violet-50 text-violet-600 dark:bg-violet-950 dark:text-violet-400 w-fit group-hover:scale-110 transition-transform">
+                <Users className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white group-hover:text-violet-600 dark:group-hover:text-violet-400 transition-colors">
+                  Portal del Coordinador
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 leading-normal">
+                  Gestiona expedientes escolares (NEM), administra y genera grupos, y planifica los horarios de clases de forma ágil.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center gap-1.5 text-xs font-bold text-violet-600 dark:text-violet-400">
+              Entrar como Coordinador
               <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>

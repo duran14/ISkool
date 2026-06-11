@@ -10,9 +10,11 @@ import {
   Brain, Globe, Scale, Activity, Wand2, Plus,
   Trash2, Play, Square, FileText, Check, 
   ChevronDown, ChevronUp, RefreshCw, FileCode,
-  ZoomIn, ZoomOut, Maximize2, Users, Palette
+  ZoomIn, ZoomOut, Maximize2, Users, Palette,
+  X, MapPin, Phone, Mail, User
 } from 'lucide-react';
 import { FormattedDate } from '@/components/FormattedDate';
+import { DetailedStudent } from '@/types';
 
 // Catálogo de PDAs por asignatura
 const PDA_CATALOG: Record<string, string[]> = {
@@ -68,7 +70,25 @@ const RUBRIC_CRITERIA = [
 ];
 
 export default function TeacherDashboard() {
-  const { portfolioItems, reviewPortfolioItem, currentTeacher } = useGamification();
+  const { portfolioItems, reviewPortfolioItem, currentTeacher, detailedStudents, schedulesList, groupsList } = useGamification();
+
+  // Expediente escolar detallado
+  const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
+
+  // Formateador de nombres de estudiantes (apellidos primero)
+  const formatStudentName = (student: DetailedStudent | { first_name: string; last_name: string; second_name?: string; last_name_1?: string; last_name_2?: string }) => {
+    if ('last_name_1' in student && student.last_name_1) {
+      const ap1 = student.last_name_1;
+      const ap2 = student.last_name_2 ? ` ${student.last_name_2}` : '';
+      const n1 = student.first_name;
+      const n2 = student.second_name ? ` ${student.second_name}` : '';
+      return `${ap1}${ap2}, ${n1}${n2}`.trim();
+    } else {
+      const lastName = ('last_name' in student) ? student.last_name : '';
+      const firstName = student.first_name || '';
+      return `${lastName}, ${firstName}`.trim();
+    }
+  };
 
   // Estados generales del panel
   const [activeTab, setActiveTab] = useState<'pending' | 'reviewed'>('pending');
@@ -107,9 +127,13 @@ export default function TeacherDashboard() {
   const pendingItems = portfolioItems.filter(item => item.status === 'submitted');
   const reviewedItems = portfolioItems.filter(item => item.status === 'approved' || item.status === 'needs_revision');
 
-  // Selección automática de elementos
-  const currentItems = activeTab === 'pending' ? pendingItems : reviewedItems;
-  const activeItem = currentItems.find(i => i.id === selectedItemId) || currentItems[0] || null;
+  // Selección automática de elementos ordenados por apellido
+  const sortedCurrentItems = [...(activeTab === 'pending' ? pendingItems : reviewedItems)].sort((a, b) => {
+    const nameA = a.student_profile ? formatStudentName(a.student_profile) : '';
+    const nameB = b.student_profile ? formatStudentName(b.student_profile) : '';
+    return nameA.localeCompare(nameB);
+  });
+  const activeItem = sortedCurrentItems.find(i => i.id === selectedItemId) || sortedCurrentItems[0] || null;
 
   // Cargar estados locales al cambiar el elemento activo
   useEffect(() => {
@@ -141,11 +165,11 @@ export default function TeacherDashboard() {
     setSelectedPDA(activeItem.pdas?.[0] || pdasForSubject[0] || '');
 
     // XP breakdown por defecto
-    setXpBreakdown(activeItem.xp_breakdown || {
-      scientific: activeItem.subject_id === 'sub-math' || activeItem.subject_id === 'sub-sci' ? 40 : 10,
-      critical: 30,
-      collaborative: 20,
-      communication: activeItem.subject_id === 'sub-span' ? 40 : 10
+    setXpBreakdown({
+      scientific: activeItem.xp_breakdown?.scientific ?? (activeItem.subject_id === 'sub-math' || activeItem.subject_id === 'sub-sci' ? 40 : 10),
+      critical: activeItem.xp_breakdown?.critical ?? 30,
+      collaborative: activeItem.xp_breakdown?.collaborative ?? 20,
+      communication: activeItem.xp_breakdown?.communication ?? (activeItem.subject_id === 'sub-span' ? 40 : 10)
     });
 
     setRubricSelections({});
@@ -341,7 +365,7 @@ export default function TeacherDashboard() {
           </div>
         </div>
 
-        {currentItems.length === 0 ? (
+        {sortedCurrentItems.length === 0 ? (
           <div className="rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-16 text-center flex flex-col items-center justify-center gap-4">
             <CheckCircle2 className="h-16 w-16 text-emerald-500 animate-bounce" />
             <div>
@@ -357,7 +381,7 @@ export default function TeacherDashboard() {
             {/* COLUMNA 1: LISTADO LATERAL (lg:col-span-3) */}
             <div className="lg:col-span-3 flex flex-col gap-3 max-h-[750px] overflow-y-auto pr-1">
               <p className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider px-1">Entregas Recientes</p>
-              {currentItems.map((item) => {
+              {sortedCurrentItems.map((item) => {
                 const isActive = item.id === selectedItemId;
                 return (
                   <button
@@ -376,7 +400,28 @@ export default function TeacherDashboard() {
                         </div>
                         <div>
                           <p className="text-xs font-bold text-zinc-900 dark:text-white leading-tight">
-                            {item.student_profile?.first_name} {item.student_profile?.last_name}
+                            <span 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const student = detailedStudents.find(s => s.id === item.student_id);
+                                if (!student) return;
+                                
+                                // Validar que el profesor da clase al grupo del alumno
+                                const teacherGroupIds = schedulesList
+                                  .filter(s => s.teacherId === currentTeacher.id)
+                                  .map(s => s.groupId);
+                                
+                                const hasAccess = student.group_id && teacherGroupIds.includes(student.group_id);
+                                if (hasAccess) {
+                                  setSelectedStudent(student);
+                                } else {
+                                  alert("Acceso denegado: Este alumno no está inscrito en tus asignaciones de grupo vigentes.");
+                                }
+                              }}
+                              className="hover:text-violet-600 dark:hover:text-violet-400 hover:underline transition-colors cursor-pointer"
+                            >
+                              {item.student_profile ? formatStudentName(item.student_profile) : ''}
+                            </span>
                           </p>
                           <p className="text-[9px] text-zinc-400 leading-none mt-0.5">{item.subject?.name}</p>
                         </div>
@@ -944,6 +989,267 @@ export default function TeacherDashboard() {
         )}
 
       </main>
+
+      {/* Modal de Detalle de Alumno */}
+      {selectedStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/55 backdrop-blur-md transition-opacity duration-300 text-left">
+          <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 w-full max-w-4xl rounded-3xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]">
+            
+            {/* Cabecera del Modal */}
+            <div className="relative p-6 border-b border-zinc-100 dark:border-zinc-850 flex flex-col md:flex-row items-center gap-6 bg-zinc-50/50 dark:bg-zinc-950/20">
+              <button 
+                onClick={() => setSelectedStudent(null)}
+                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+              >
+                <X className="h-5 w-5" />
+              </button>
+
+              {/* Foto de Perfil con borde según nivel */}
+              <div className={`relative h-24 w-24 rounded-full overflow-hidden border-4 flex-shrink-0 shadow-lg ${
+                selectedStudent.level === 'primaria' ? 'border-blue-400' :
+                selectedStudent.level === 'secundaria' ? 'border-violet-500' : 'border-orange-500'
+              }`}>
+                <img 
+                  src={selectedStudent.photo_url || '/images/students/default.png'} 
+                  alt={`${selectedStudent.first_name} ${selectedStudent.last_name_1}`}
+                  className="h-full w-full object-cover"
+                />
+              </div>
+
+              <div className="flex-1 text-center md:text-left">
+                <div className="flex flex-wrap items-center justify-center md:justify-start gap-2 mb-1">
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                    selectedStudent.level === 'primaria' ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/30 dark:text-blue-400' :
+                    selectedStudent.level === 'secundaria' ? 'bg-violet-50 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400' : 
+                    'bg-orange-50 text-orange-600 dark:bg-orange-950/30 dark:text-orange-400'
+                  }`}>
+                    {selectedStudent.level}
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 text-[10px] font-bold">
+                    {selectedStudent.grade}
+                  </span>
+                  {selectedStudent.group_id && (
+                    <span className="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400 text-[10px] font-bold">
+                      Grupo {groupsList.find(g => g.id === selectedStudent.group_id)?.name || ''}
+                    </span>
+                  )}
+                  <span className="px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 text-[10px] font-bold">
+                    Turno {selectedStudent.shift || 'matutino'}
+                  </span>
+                </div>
+                
+                <h2 className="text-xl md:text-2xl font-black text-zinc-900 dark:text-white">
+                  {formatStudentName(selectedStudent)}
+                </h2>
+                
+                <div className="flex flex-wrap justify-center md:justify-start gap-x-4 gap-y-1 mt-2 text-xs text-zinc-500 font-semibold">
+                  <span className="font-mono"><strong>Matrícula:</strong> {selectedStudent.enrollment_id}</span>
+                  <span className="font-mono"><strong>CURP:</strong> {selectedStudent.curp}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Contenido (Desplazable si es necesario) */}
+            <div className="flex-1 overflow-y-auto p-6 md:p-8">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                
+                {/* SECCIÓN 1: DATOS PERSONALES */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                    <User className="h-4 w-4 text-violet-500" />
+                    Datos Personales
+                  </h3>
+                  
+                  <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Fecha de Nacimiento</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.birth_date}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Edad Calculada</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex-shrink-0">
+                        {(() => {
+                          if (!selectedStudent.birth_date) return 0;
+                          const birthDate = new Date(selectedStudent.birth_date);
+                          const today = new Date();
+                          let age = today.getFullYear() - birthDate.getFullYear();
+                          const m = today.getMonth() - birthDate.getMonth();
+                          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                            age--;
+                          }
+                          return age;
+                        })()} años
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Género</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.gender || 'Masculino'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Escuela de Procedencia</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.previous_school || 'Ninguna'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Estado en el Sistema</span>
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase mt-1">
+                        ● {selectedStudent.status}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SECCIÓN 2: CONTACTO Y FAMILIA */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                    <Phone className="h-4 w-4 text-violet-500" />
+                    Contacto y Familiares
+                  </h3>
+                  
+                  <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Dirección</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-start gap-1"><MapPin className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0 mt-0.5" /> {selectedStudent.address || 'S/D'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Teléfono de Contacto</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.phone || 'S/T'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Correo Electrónico</span>
+                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.email || 'S/C'}</span>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Padres / Tutores</span>
+                      <div className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300 leading-tight space-y-1">
+                        {selectedStudent.mother_name && <div>• <strong>Madre:</strong> {selectedStudent.mother_name}</div>}
+                        {selectedStudent.father_name && <div>• <strong>Padre:</strong> {selectedStudent.father_name}</div>}
+                        {selectedStudent.tutor_name && <div>• <strong>Tutor Legal:</strong> {selectedStudent.tutor_name}</div>}
+                      </div>
+                    </div>
+                    {(selectedStudent.emergency_contact_name || selectedStudent.emergency_contact_phone) && (
+                      <div className="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-2 mt-2">
+                        <span className="text-[10px] font-black text-red-500 dark:text-red-400 uppercase block">Contacto de Emergencia</span>
+                        <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 block">{selectedStudent.emergency_contact_name || 'S/N'}</span>
+                        <span className="text-[10.5px] text-zinc-500 block">{selectedStudent.emergency_contact_phone || 'S/T'}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* SECCIÓN 3: EXPEDIENTE MÉDICO Y ADMINISTRATIVO */}
+                <div className="space-y-4">
+                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                    <Activity className="h-4 w-4 text-violet-500" />
+                    Expediente Escolar
+                  </h3>
+                  
+                  <div className="space-y-4">
+                    {/* Pagos Pendientes */}
+                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Pagos y Adeudos</span>
+                      {selectedStudent.pending_payments && selectedStudent.pending_payments.length > 0 ? (
+                        <div className="space-y-1.5">
+                          {selectedStudent.pending_payments.map((p, idx) => (
+                            <div key={idx} className="p-2 rounded bg-amber-50 dark:bg-amber-955/10 border border-amber-200/50 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                              {p}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-955/10 border border-emerald-200/50 text-[11px] font-bold text-emerald-700 dark:text-emerald-450 flex items-center gap-1.5">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                          Sin adeudos registrados.
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Reportes de Conducta */}
+                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Reportes de Conducta</span>
+                      {selectedStudent.behavior_reports && selectedStudent.behavior_reports.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedStudent.behavior_reports.map((r, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-955/10 border border-rose-200/40 text-[10.5px]">
+                              <div className="flex justify-between font-bold text-rose-700 dark:text-rose-400 mb-1 text-[9.5px]">
+                                <span>Reporta: {r.reporter}</span>
+                                <span>{r.date}</span>
+                              </div>
+                              <p className="text-zinc-700 dark:text-zinc-300">{r.description}</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 italic">No cuenta con incidencias ni reportes disciplinarios.</p>
+                      )}
+                    </div>
+
+                    {/* Notas del Profesor */}
+                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Notas de Profesores</span>
+                      {selectedStudent.teacher_notes && selectedStudent.teacher_notes.length > 0 ? (
+                        <div className="space-y-2">
+                          {selectedStudent.teacher_notes.map((n, idx) => (
+                            <div key={idx} className="p-2.5 rounded-xl bg-violet-50/60 dark:bg-violet-955/10 border border-violet-200/30 text-[10.5px]">
+                              <div className="flex justify-between font-bold text-violet-700 dark:text-violet-400 mb-1 text-[9.5px]">
+                                <span>Prof. {n.teacher_name}</span>
+                                <span>{n.date}</span>
+                              </div>
+                              <p className="text-zinc-700 dark:text-zinc-300 italic">"{n.note}"</p>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-zinc-500 italic">Sin anotaciones de maestros.</p>
+                      )}
+                    </div>
+
+                    {/* Médico */}
+                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850 space-y-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Tipo de Sangre</span>
+                        <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 text-xs font-extrabold">{selectedStudent.blood_type || 'S/D'}</span>
+                      </div>
+                      
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Alergias / Restricciones Médicas</span>
+                        {selectedStudent.medical_notes ? (
+                          <div className="p-2.5 rounded-lg bg-red-50/80 border border-red-200/50 dark:bg-red-950/10 dark:border-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium">
+                            {selectedStudent.medical_notes}
+                          </div>
+                        ) : (
+                          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Ninguna alergia reportada</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Notas Académicas de Coordinación */}
+                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Notas de Coordinación</span>
+                      <p className="text-xs text-zinc-600 dark:text-zinc-300 italic leading-relaxed">
+                        {selectedStudent.academic_notes || "Sin notas académicas registradas en este expediente."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+
+            {/* Pie de Modal */}
+            <div className="p-4 px-6 border-t border-zinc-100 dark:border-zinc-850 bg-zinc-50 dark:bg-zinc-950/10 flex justify-end">
+              <button
+                onClick={() => setSelectedStudent(null)}
+                className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-850 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-full text-xs font-bold shadow-md shadow-zinc-500/10 transition-all"
+              >
+                Cerrar Expediente
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

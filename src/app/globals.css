@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  
+  /* Valores HSL por defecto si no son sobreescritos dinámicamente */
+  --color-primary-hsl: 250 84% 54%;
+  --color-secondary-hsl: 221 83% 53%;
+  --color-accent-hsl: 142 71% 45%;
+
+  /* Variables de colores Tailwind */
+  --color-primary: hsl(var(--color-primary-hsl));
+  --color-secondary: hsl(var(--color-secondary-hsl));
+  --color-accent: hsl(var(--color-accent-hsl));
 }
 
 @theme inline {
@@ -10,6 +20,11 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  
+  /* Registrar las variables en el motor de Tailwind v4 */
+  --color-brand-primary: var(--color-primary);
+  --color-brand-secondary: var(--color-secondary);
+  --color-brand-accent: var(--color-accent);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,3 +39,4 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+

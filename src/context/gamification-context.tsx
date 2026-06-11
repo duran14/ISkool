@@ -1,33 +1,54 @@
 "use client";
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
-  StudentStats,
-  StudentAvatar,
-  Badge,
-  StudentBadge,
-  Mission,
-  Quest,
-  QuestAttempt,
-  PortfolioItem,
-  PortfolioFeedback,
-  PortfolioItemStatus,
-  FeedbackAuthorRole,
-  Subject,
-  UserProfile,
-  GuildBoss,
-  GuildMemberSubmission
-} from '../types';
+   StudentStats,
+   StudentAvatar,
+   Badge,
+   StudentBadge,
+   Mission,
+   Quest,
+   QuestAttempt,
+   PortfolioItem,
+   PortfolioFeedback,
+   PortfolioItemStatus,
+   FeedbackAuthorRole,
+   Subject,
+   UserProfile,
+   GuildBoss,
+   GuildMemberSubmission,
+   DetailedStudent,
+   ClassSchedule,
+   Group,
+   SchoolSettings
+ } from '../types';
+ 
+ 
+ interface GamificationContextProps {
+   stats: StudentStats;
+   avatar: StudentAvatar;
+   badges: Badge[];
+   studentBadges: StudentBadge[];
+   missions: Mission[];
+   portfolioItems: PortfolioItem[];
+   questAttempts: QuestAttempt[];
+   subjects: Subject[];
+   
+   // Datos de Onboarding de Escuela y Tema
+   schoolSettings: SchoolSettings;
+   saveSchoolSettings: (settings: SchoolSettings) => void;
+   
+   // Datos del Coordinador
+   detailedStudents: DetailedStudent[];
+   setDetailedStudents: React.Dispatch<React.SetStateAction<DetailedStudent[]>>;
+   groupsList: Group[];
+   schedulesList: ClassSchedule[];
+   registerStudent: (studentData: Omit<DetailedStudent, 'id'>) => void;
+   generateGroupsForGrade: (level: 'primaria' | 'secundaria' | 'preparatoria', grade: string, groupNames: string[]) => void;
+   assignStudentToGroup: (studentId: string, groupId: string) => void;
+   createSchedule: (scheduleData: Omit<ClassSchedule, 'id'>) => void;
+   deleteSchedule: (scheduleId: string) => void;
+   deleteGroup: (groupId: string) => void;
 
-interface GamificationContextProps {
-  stats: StudentStats;
-  avatar: StudentAvatar;
-  badges: Badge[];
-  studentBadges: StudentBadge[];
-  missions: Mission[];
-  portfolioItems: PortfolioItem[];
-  questAttempts: QuestAttempt[];
-  subjects: Subject[];
   
   // Perfiles Simulación
   currentStudent: UserProfile;
@@ -217,6 +238,399 @@ const STUDENTS_LIST_SEED: UserProfile[] = [
   { id: 'std-prep', first_name: 'Mateo', last_name: 'Díaz', role: 'student', email: 'mateo@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } // Preparatoria (4º Sem)
 ];
 
+const GROUPS_SEED: Group[] = [
+  { id: 'grp-pb-a', school_id: 'sch-1', level_grade_id: 'primaria-1º', academic_year_id: 'ay-25-26', name: 'A', created_at: new Date().toISOString() },
+  { id: 'grp-pa-a', school_id: 'sch-1', level_grade_id: 'primaria-4º', academic_year_id: 'ay-25-26', name: 'A', created_at: new Date().toISOString() },
+  { id: 'grp-sec-a', school_id: 'sch-1', level_grade_id: 'secundaria-2º', academic_year_id: 'ay-25-26', name: 'A', created_at: new Date().toISOString() },
+  { id: 'grp-prep-a', school_id: 'sch-1', level_grade_id: 'preparatoria-4ºSemestre', academic_year_id: 'ay-25-26', name: 'A', created_at: new Date().toISOString() }
+];
+
+const DETAILED_STUDENTS_SEED: DetailedStudent[] = [
+  {
+    id: 'std-pb',
+    first_name: 'Santi',
+    second_name: 'Aurelio',
+    last_name_1: 'Gómez',
+    last_name_2: 'Pérez',
+    birth_date: '2019-05-15',
+    curp: 'GOPA190515HDFMRN01',
+    enrollment_id: 'MAT-2025-001',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Jardín de Niños Pipila',
+    photo_url: '/images/students/santi.png',
+    address: 'Av. Juárez 123, Col. Centro, CDMX',
+    phone: '555-123-4567',
+    email: 'santi@iskool.edu.mx',
+    father_name: 'Roberto Gómez',
+    mother_name: 'Gabriela Pérez',
+    tutor_name: 'Roberto Gómez',
+    emergency_contact_name: 'Gabriela Pérez',
+    emergency_contact_phone: '555-987-6543',
+    blood_type: 'O+',
+    medical_notes: 'Alergia al polen. No requiere medicamento diario.',
+    academic_notes: 'Excelente alumno, participa mucho en clase.',
+    level: 'primaria',
+    grade: '1º',
+    group_id: 'grp-pb-a',
+    pending_payments: ["Colegiatura Junio 2026", "Inscripción Ciclo Escolar 2026-2027"],
+    behavior_reports: [],
+    teacher_notes: [{ date: "2026-06-02", note: "Santi es muy participativo en clase de matemáticas, comprendió rápido las figuras geométricas.", teacher_name: "Israel López" }]
+  },
+  {
+    id: 'std-pa',
+    first_name: 'Lucas',
+    second_name: 'Caelum',
+    last_name_1: 'Skywalker',
+    last_name_2: 'Organa',
+    birth_date: '2016-10-22',
+    curp: 'SKOL161022HDFMRN02',
+    enrollment_id: 'MAT-2025-002',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Colegio del Bosque',
+    photo_url: '/images/students/lucas.png',
+    address: 'Calle del Sol 45, Tattoine, EdoMex',
+    phone: '555-234-5678',
+    email: 'lucas@iskool.edu.mx',
+    father_name: 'Anakin Skywalker',
+    mother_name: 'Padmé Amidala',
+    tutor_name: 'Anakin Skywalker',
+    emergency_contact_name: 'Anakin Skywalker',
+    emergency_contact_phone: '555-876-5432',
+    blood_type: 'A+',
+    medical_notes: 'Ninguna alergia reportada.',
+    academic_notes: 'Muestra gran interés en las fracciones y las ciencias.',
+    level: 'primaria',
+    grade: '4º',
+    group_id: 'grp-pa-a',
+    pending_payments: [],
+    behavior_reports: [{ date: "2026-05-18", description: "Lucas se distrajo usando un juguete durante la explicación de ciencias naturales.", reporter: "Israel López" }],
+    teacher_notes: [{ date: "2026-05-20", note: "Lucas demostró excelente comprensión del tema de fracciones.", teacher_name: "Israel López" }]
+  },
+  {
+    id: 'std-sec',
+    first_name: 'Elena',
+    second_name: 'Natasha',
+    last_name_1: 'Rostova',
+    last_name_2: 'Bolonskaya',
+    birth_date: '2012-03-08',
+    curp: 'ROBE120308MDFMRN03',
+    enrollment_id: 'MAT-2024-054',
+    gender: 'Femenino',
+    shift: 'vespertino',
+    status: 'activo',
+    previous_school: 'Primaria Justo Sierra',
+    photo_url: '/images/students/elena.png',
+    address: 'Paseo de la Reforma 999, CDMX',
+    phone: '555-345-6789',
+    email: 'elena@iskool.edu.mx',
+    father_name: 'Ilya Rostov',
+    mother_name: 'Natalia Rostova',
+    tutor_name: 'Natalia Rostova',
+    emergency_contact_name: 'Ilya Rostov',
+    emergency_contact_phone: '555-765-4321',
+    blood_type: 'B-',
+    medical_notes: 'Asma leve. Trae inhalador en su mochila.',
+    academic_notes: 'Líder en las actividades del gremio. Alto nivel en ciencias.',
+    level: 'secundaria',
+    grade: '2º',
+    group_id: 'grp-sec-a',
+    pending_payments: ["Uniforme Deportivo"],
+    behavior_reports: [],
+    teacher_notes: [{ date: "2026-06-05", note: "Elena lideró de manera muy organizada el proyecto científico del biodigestor.", teacher_name: "Israel López" }]
+  },
+  {
+    id: 'std-prep',
+    first_name: 'Mateo',
+    second_name: 'Benjamín',
+    last_name_1: 'Díaz',
+    last_name_2: 'Hernández',
+    birth_date: '2009-11-30',
+    curp: 'DIHM091130HDFMRN04',
+    enrollment_id: 'MAT-2023-112',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Secundaria 14',
+    photo_url: '/images/students/mateo.png',
+    address: 'Av. Insurgentes Sur 55, CDMX',
+    phone: '555-456-7890',
+    email: 'mateo@iskool.edu.mx',
+    father_name: 'Pedro Díaz',
+    mother_name: 'Patricia Hernández',
+    tutor_name: 'Pedro Díaz',
+    emergency_contact_name: 'Pedro Díaz',
+    emergency_contact_phone: '555-654-3210',
+    blood_type: 'O-',
+    medical_notes: 'Alergia alimentaria a las nueces.',
+    academic_notes: 'Proactivo, excelente coevaluador y desempeño en el proyecto de biodigestor.',
+    level: 'preparatoria',
+    grade: '4º Semestre',
+    group_id: 'grp-prep-a',
+    pending_payments: ["Colegiatura Junio 2026"],
+    behavior_reports: [{ date: "2026-04-12", description: "Mateo fue sorprendido copiando en el quiz de prueba. Se habló con él y reconoció el error.", reporter: "Israel López" }],
+    teacher_notes: [{ date: "2026-05-10", note: "Mateo es un excelente coevaluador y ofrece críticas muy constructivas.", teacher_name: "Israel López" }]
+  },
+  
+  // === NUEVOS ESTUDIANTES SEMILLA SIN GRUPO (3 de Primaria, 3 de Secundaria, 3 de Preparatoria) ===
+  {
+    id: 'std-sem-p1',
+    first_name: 'Sofía',
+    second_name: 'Regina',
+    last_name_1: 'Castro',
+    last_name_2: 'Ruiz',
+    birth_date: '2018-02-14',
+    curp: 'CARS180214MDFMRN01',
+    enrollment_id: 'MAT-2026-601',
+    gender: 'Femenino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Jardín de Niños México',
+    photo_url: '/images/students/default.png',
+    address: 'Av. Coyoacán 100, CDMX',
+    phone: '555-601-0001',
+    email: 'sofia.castro@iskool.edu.mx',
+    father_name: 'Hugo Castro',
+    mother_name: 'Regina Ruiz',
+    blood_type: 'A+',
+    medical_notes: '',
+    academic_notes: 'Excelente disposición al juego colaborativo.',
+    level: 'primaria',
+    grade: '2º',
+    pending_payments: ["Uniforme Escolar"],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-p2',
+    first_name: 'Miguel',
+    second_name: 'Ángel',
+    last_name_1: 'Ortiz',
+    last_name_2: 'Medina',
+    birth_date: '2017-08-22',
+    curp: 'OIMM170822HDFMRN02',
+    enrollment_id: 'MAT-2026-602',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Colegio Anglo',
+    photo_url: '/images/students/default.png',
+    address: 'Calle 10, Col. San Pedro, CDMX',
+    phone: '555-602-0002',
+    email: 'miguel.ortiz@iskool.edu.mx',
+    father_name: 'Angel Ortiz',
+    mother_name: 'Laura Medina',
+    blood_type: 'O+',
+    medical_notes: 'Intolerancia a la lactosa.',
+    academic_notes: 'Muestra interés en lectura y dibujo.',
+    level: 'primaria',
+    grade: '3º',
+    pending_payments: [],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-p3',
+    first_name: 'Valentina',
+    last_name_1: 'Hernández',
+    last_name_2: 'Silva',
+    birth_date: '2015-04-10',
+    curp: 'HESV150410MDFMRN03',
+    enrollment_id: 'MAT-2026-603',
+    gender: 'Femenino',
+    shift: 'vespertino',
+    status: 'activo',
+    previous_school: 'Primaria Niños Héroes',
+    photo_url: '/images/students/default.png',
+    address: 'Paseo del Río 456, CDMX',
+    phone: '555-603-0003',
+    email: 'valentina.hernandez@iskool.edu.mx',
+    tutor_name: 'Gloria Silva',
+    blood_type: 'B+',
+    medical_notes: '',
+    academic_notes: 'Alumna atenta, muy participativa en actividades artísticas.',
+    level: 'primaria',
+    grade: '5º',
+    pending_payments: ["Colegiatura Junio 2026"],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-s1',
+    first_name: 'Alejandro',
+    last_name_1: 'Flores',
+    last_name_2: 'Torres',
+    birth_date: '2013-11-05',
+    curp: 'FOTA131105HDFMRN04',
+    enrollment_id: 'MAT-2026-604',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Primaria Benito Juárez',
+    photo_url: '/images/students/default.png',
+    address: 'Colima 321, Roma Norte, CDMX',
+    phone: '555-604-0004',
+    email: 'alejandro.flores@iskool.edu.mx',
+    father_name: 'Pedro Flores',
+    blood_type: 'O-',
+    medical_notes: 'Usa lentes para leer.',
+    academic_notes: 'Gran desempeño en informática y cómputo.',
+    level: 'secundaria',
+    grade: '1º',
+    pending_payments: [],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-s2',
+    first_name: 'Camila',
+    second_name: 'Ximena',
+    last_name_1: 'Jiménez',
+    last_name_2: 'Lara',
+    birth_date: '2012-05-25',
+    curp: 'JILC120525MDFMRN05',
+    enrollment_id: 'MAT-2026-605',
+    gender: 'Femenino',
+    shift: 'vespertino',
+    status: 'activo',
+    previous_school: 'Secundaria 45',
+    photo_url: '/images/students/default.png',
+    address: 'Durango 12, Roma Norte, CDMX',
+    phone: '555-605-0005',
+    email: 'camila.jimenez@iskool.edu.mx',
+    mother_name: 'Alicia Lara',
+    blood_type: 'A-',
+    medical_notes: 'Alergia menor al polvo.',
+    academic_notes: 'Líder nata en trabajos en equipo.',
+    level: 'secundaria',
+    grade: '2º',
+    pending_payments: ["Credencial Escolar"],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-s3',
+    first_name: 'Diego',
+    second_name: 'Armando',
+    last_name_1: 'Vargas',
+    last_name_2: 'Ríos',
+    birth_date: '2011-09-15',
+    curp: 'VARD110915HDFMRN06',
+    enrollment_id: 'MAT-2026-606',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Colegio Patria',
+    photo_url: '/images/students/default.png',
+    address: 'Av. Universidad 800, CDMX',
+    phone: '555-606-0006',
+    email: 'diego.vargas@iskool.edu.mx',
+    father_name: 'Armando Vargas',
+    mother_name: 'Sofía Ríos',
+    blood_type: 'AB+',
+    medical_notes: '',
+    academic_notes: 'Excelente aptitud deportiva y matemática.',
+    level: 'secundaria',
+    grade: '3º',
+    pending_payments: [],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-h1',
+    first_name: 'Isabella',
+    last_name_1: 'Montes',
+    last_name_2: 'Delgado',
+    birth_date: '2010-07-30',
+    curp: 'MODI100730MDFMRN07',
+    enrollment_id: 'MAT-2026-607',
+    gender: 'Femenino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Secundaria 10',
+    photo_url: '/images/students/default.png',
+    address: 'Insurgentes Mixcoac 44, CDMX',
+    phone: '555-607-0007',
+    email: 'isabella.montes@iskool.edu.mx',
+    mother_name: 'Gabriela Delgado',
+    blood_type: 'O+',
+    medical_notes: '',
+    academic_notes: 'Interés por las ciencias sociales y debates.',
+    level: 'preparatoria',
+    grade: '2º Semestre',
+    pending_payments: ["Colegiatura Junio 2026"],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-h2',
+    first_name: 'Leonardo',
+    second_name: 'Daniel',
+    last_name_1: 'Soto',
+    last_name_2: 'Luna',
+    birth_date: '2009-12-18',
+    curp: 'SOLL091218HDFMRN08',
+    enrollment_id: 'MAT-2026-608',
+    gender: 'Masculino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Secundaria Técnica 1',
+    photo_url: '/images/students/default.png',
+    address: 'Félix Cuevas 99, CDMX',
+    phone: '555-608-0008',
+    email: 'leonardo.soto@iskool.edu.mx',
+    father_name: 'Daniel Soto',
+    blood_type: 'A+',
+    medical_notes: 'Asma bajo control.',
+    academic_notes: 'Habilidades lógicas muy altas, propenso a las ciencias exactas.',
+    level: 'preparatoria',
+    grade: '4º Semestre',
+    pending_payments: [],
+    behavior_reports: [],
+    teacher_notes: []
+  },
+  {
+    id: 'std-sem-h3',
+    first_name: 'Natalia',
+    second_name: 'Guadalupe',
+    last_name_1: 'Cruz',
+    last_name_2: 'Peña',
+    birth_date: '2008-10-02',
+    curp: 'CUPN081002MDFMRN09',
+    enrollment_id: 'MAT-2026-609',
+    gender: 'Femenino',
+    shift: 'matutino',
+    status: 'activo',
+    previous_school: 'Secundaria Diurna 14',
+    photo_url: '/images/students/default.png',
+    address: 'Homero 1200, Polanco, CDMX',
+    phone: '555-609-0009',
+    email: 'natalia.cruz@iskool.edu.mx',
+    father_name: 'Ramón Cruz',
+    mother_name: 'Elena Peña',
+    blood_type: 'B-',
+    medical_notes: '',
+    academic_notes: 'Proactiva y líder escolar. Organiza círculos de estudio.',
+    level: 'preparatoria',
+    grade: '6º Semestre',
+    pending_payments: ["Taller de Robótica"],
+    behavior_reports: [],
+    teacher_notes: []
+  }
+];
+
+const SCHEDULES_SEED: ClassSchedule[] = [
+  { id: 'sch-1', groupId: 'grp-pa-a', subjectId: 'sub-math', teacherId: 'usr-teacher-1', dayOfWeek: 'Lunes', timeSlot: '08:00 - 09:30' },
+  { id: 'sch-2', groupId: 'grp-pa-a', subjectId: 'sub-span', teacherId: 'usr-teacher-1', dayOfWeek: 'Martes', timeSlot: '09:30 - 11:00' },
+  { id: 'sch-3', groupId: 'grp-pa-a', subjectId: 'sub-sci', teacherId: 'usr-teacher-1', dayOfWeek: 'Miércoles', timeSlot: '08:00 - 09:30' },
+  { id: 'sch-4', groupId: 'grp-sec-a', subjectId: 'sub-sci', teacherId: 'usr-teacher-1', dayOfWeek: 'Jueves', timeSlot: '11:30 - 13:00' },
+  { id: 'sch-5', groupId: 'grp-prep-a', subjectId: 'sub-sci', teacherId: 'usr-teacher-1', dayOfWeek: 'Viernes', timeSlot: '10:00 - 11:30' }
+];
+
+
 const TEACHER_SEED: UserProfile = {
   id: 'usr-teacher-1',
   first_name: 'Israel',
@@ -390,6 +804,57 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return [];
   });
 
+  // Estado de Configuración del Colegio (Onboarding)
+  const [schoolSettings, setSchoolSettings] = useState<SchoolSettings>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_school_settings');
+      if (saved) return JSON.parse(saved);
+    }
+    return {
+      isConfigured: false, // Inicia sin configurar para disparar el Onboarding
+      name: 'Colegio Anglo Mexicano',
+      website: '',
+      logoUrl: '',
+      cct: '09DPR1234Z',
+      address: 'Av. Paseo de la Reforma 123, Ciudad de México',
+      phone: '555-019-2834',
+      coordinators: ['Carlos Duran', 'Ana Gómez'],
+      teachers: ['Israel López', 'María Fernández', 'Roberto Díaz'],
+      themeColors: {
+        primary: '250 84% 54%',    // Violeta / HSL por defecto
+        secondary: '221 83% 53%',  // Azul / HSL por defecto
+        accent: '142 71% 45%'      // Verde / HSL por defecto
+      }
+    };
+  });
+
+  const saveSchoolSettings = (settings: SchoolSettings) => {
+    setSchoolSettings(settings);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('iskool_school_settings', JSON.stringify(settings));
+    }
+  };
+
+  // Inyectar variables de color de tema dinámicas en :root
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const root = document.documentElement;
+      const primary = schoolSettings.themeColors.primary;
+      const secondary = schoolSettings.themeColors.secondary;
+      const accent = schoolSettings.themeColors.accent;
+
+      // Inyectar tanto en formato HSL directo
+      root.style.setProperty('--color-primary-hsl', primary);
+      root.style.setProperty('--color-secondary-hsl', secondary);
+      root.style.setProperty('--color-accent-hsl', accent);
+
+      // Inyectar como colores Tailwind utilizables
+      root.style.setProperty('--color-primary', `hsl(${primary})`);
+      root.style.setProperty('--color-secondary', `hsl(${secondary})`);
+      root.style.setProperty('--color-accent', `hsl(${accent})`);
+    }
+  }, [schoolSettings]);
+
   const [guildBoss, setGuildBoss] = useState<GuildBoss>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('iskool_guild_boss');
@@ -404,6 +869,31 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       return saved ? JSON.parse(saved) : GUILD_SUBMISSIONS_SEED;
     }
     return GUILD_SUBMISSIONS_SEED;
+  });
+
+  // Estados del Coordinador
+  const [detailedStudents, setDetailedStudents] = useState<DetailedStudent[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_detailed_students');
+      return saved ? JSON.parse(saved) : DETAILED_STUDENTS_SEED;
+    }
+    return DETAILED_STUDENTS_SEED;
+  });
+
+  const [groupsList, setGroupsList] = useState<Group[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_groups_list');
+      return saved ? JSON.parse(saved) : GROUPS_SEED;
+    }
+    return GROUPS_SEED;
+  });
+
+  const [schedulesList, setSchedulesList] = useState<ClassSchedule[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_schedules_list');
+      return saved ? JSON.parse(saved) : SCHEDULES_SEED;
+    }
+    return SCHEDULES_SEED;
   });
 
   // Obtener Perfil, Stats y Avatar actuales
@@ -443,6 +933,18 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem('iskool_guild_submissions', JSON.stringify(guildSubmissions));
   }, [guildSubmissions]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_detailed_students', JSON.stringify(detailedStudents));
+  }, [detailedStudents]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_groups_list', JSON.stringify(groupsList));
+  }, [groupsList]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_schedules_list', JSON.stringify(schedulesList));
+  }, [schedulesList]);
 
   // Lógica RPG Combate Colaborativo
   const triggerGuildAttack = (damage: number) => {
@@ -925,8 +1427,93 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  // Métodos del Coordinador
+  const registerStudent = (studentData: Omit<DetailedStudent, 'id'>) => {
+    const newId = `std-${Date.now()}`;
+    const newStudent: DetailedStudent = {
+      ...studentData,
+      id: newId,
+      photo_url: studentData.photo_url || '/images/students/default.png'
+    };
+    setDetailedStudents(prev => [...prev, newStudent]);
+    
+    // Inicializar stats para gamificación
+    setAllStats(prev => ({
+      ...prev,
+      [newId]: {
+        student_id: newId,
+        xp: 0,
+        level: 1,
+        coins: 0,
+        current_streak: 1,
+        max_streak: 1,
+        updated_at: new Date().toISOString()
+      }
+    }));
+    
+    // Inicializar avatar
+    setAllAvatars(prev => ({
+      ...prev,
+      [newId]: {
+        student_id: newId,
+        avatar_name: studentData.first_name,
+        hair_style: 'classic',
+        hair_color: '#4B5563',
+        eyes_style: 'happy',
+        outfit_style: 'explorer',
+        outfit_color: '#3B82F6',
+        background_style: 'forest',
+        unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
+        updated_at: new Date().toISOString()
+      }
+    }));
+  };
+
+  const generateGroupsForGrade = (level: 'primaria' | 'secundaria' | 'preparatoria', grade: string, groupNames: string[]) => {
+    const newGroups: Group[] = groupNames.map(name => {
+      const key = `${level}-${grade.replace(/\s+/g, '')}`;
+      return {
+        id: `grp-${key}-${name.toLowerCase()}-${Date.now()}-${Math.floor(Math.random() * 1000)}`,
+        school_id: 'sch-1',
+        level_grade_id: key,
+        academic_year_id: 'ay-25-26',
+        name: name,
+        created_at: new Date().toISOString()
+      };
+    });
+    setGroupsList(prev => [...prev, ...newGroups]);
+  };
+
+  const assignStudentToGroup = (studentId: string, groupId: string) => {
+    setDetailedStudents(prev => prev.map(s => {
+      if (s.id === studentId) {
+        return { ...s, group_id: groupId };
+      }
+      return s;
+    }));
+  };
+
+  const createSchedule = (scheduleData: Omit<ClassSchedule, 'id'>) => {
+    const newSchedule: ClassSchedule = {
+      ...scheduleData,
+      id: `sch-${Date.now()}`
+    };
+    setSchedulesList(prev => [...prev, newSchedule]);
+  };
+
+  const deleteSchedule = (scheduleId: string) => {
+    setSchedulesList(prev => prev.filter(s => s.id !== scheduleId));
+  };
+
+  const deleteGroup = (groupId: string) => {
+    setGroupsList(prev => prev.filter(g => g.id !== groupId));
+    setDetailedStudents(prev => prev.map(s => s.group_id === groupId ? { ...s, group_id: undefined } : s));
+    setSchedulesList(prev => prev.filter(s => s.groupId !== groupId));
+  };
+
   // Reiniciar
   const resetAllData = () => {
+    // 1. Limpiar localStorage
     localStorage.removeItem('iskool_active_student_id');
     localStorage.removeItem('iskool_all_stats');
     localStorage.removeItem('iskool_all_avatars');
@@ -935,6 +1522,27 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.removeItem('iskool_attempts');
     localStorage.removeItem('iskool_guild_boss');
     localStorage.removeItem('iskool_guild_submissions');
+    localStorage.removeItem('iskool_detailed_students');
+    localStorage.removeItem('iskool_groups_list');
+    localStorage.removeItem('iskool_schedules_list');
+
+    // 2. Escribir las semillas directamente en localStorage de forma síncrona
+    localStorage.setItem('iskool_all_stats', JSON.stringify(STATS_MAP_SEED));
+    localStorage.setItem('iskool_all_avatars', JSON.stringify(AVATAR_MAP_SEED));
+    localStorage.setItem('iskool_portfolio', JSON.stringify(PORTFOLIO_SEED));
+    localStorage.setItem('iskool_detailed_students', JSON.stringify(DETAILED_STUDENTS_SEED));
+    localStorage.setItem('iskool_groups_list', JSON.stringify(GROUPS_SEED));
+    localStorage.setItem('iskool_schedules_list', JSON.stringify(SCHEDULES_SEED));
+    localStorage.setItem('iskool_student_badges', JSON.stringify([
+      { student_id: 'std-pa', badge_id: 'badge-1', earned_at: new Date().toISOString() },
+      { student_id: 'std-sec', badge_id: 'badge-3', earned_at: new Date().toISOString() }
+    ]));
+    localStorage.setItem('iskool_attempts', JSON.stringify([]));
+    localStorage.setItem('iskool_guild_boss', JSON.stringify(BOSS_SEED));
+    localStorage.setItem('iskool_guild_submissions', JSON.stringify(GUILD_SUBMISSIONS_SEED));
+    localStorage.setItem('iskool_active_student_id', 'std-pa');
+
+    // 3. Actualizar estados locales de React
     setActiveStudentId('std-pa');
     setAllStats(STATS_MAP_SEED);
     setAllAvatars(AVATAR_MAP_SEED);
@@ -946,6 +1554,25 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setQuestAttempts([]);
     setGuildBoss(BOSS_SEED);
     setGuildSubmissions(GUILD_SUBMISSIONS_SEED);
+    setDetailedStudents(DETAILED_STUDENTS_SEED);
+    setGroupsList(GROUPS_SEED);
+    setSchedulesList(SCHEDULES_SEED);
+    setSchoolSettings({
+      isConfigured: false,
+      name: 'Colegio Anglo Mexicano',
+      website: '',
+      logoUrl: '',
+      cct: '09DPR1234Z',
+      address: 'Av. Paseo de la Reforma 123, Ciudad de México',
+      phone: '555-019-2834',
+      coordinators: ['Carlos Duran', 'Ana Gómez'],
+      teachers: ['Israel López', 'María Fernández', 'Roberto Díaz'],
+      themeColors: {
+        primary: '250 84% 54%',
+        secondary: '221 83% 53%',
+        accent: '142 71% 45%'
+      }
+    });
   };
 
   return (
@@ -964,9 +1591,31 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       }),
       questAttempts: questAttempts.filter(a => a.student_id === activeStudentId),
       subjects: SUBJECTS_SEED,
+
+      schoolSettings,
+      saveSchoolSettings,
+      
+      detailedStudents,
+      setDetailedStudents,
+      groupsList,
+      schedulesList,
+      registerStudent,
+      generateGroupsForGrade,
+      assignStudentToGroup,
+      createSchedule,
+      deleteSchedule,
+      deleteGroup,
       
       currentStudent,
-      studentsList: STUDENTS_LIST_SEED,
+      studentsList: detailedStudents.map(ds => ({
+        id: ds.id,
+        first_name: ds.first_name,
+        last_name: `${ds.last_name_1} ${ds.last_name_2 || ''}`.trim(),
+        role: 'student',
+        email: ds.email || `${ds.first_name.toLowerCase()}@iskool.edu.mx`,
+        created_at: ds.birth_date,
+        updated_at: new Date().toISOString()
+      })),
       activeStudentId,
       currentTeacher: TEACHER_SEED,
       currentParent: PARENT_SEED,

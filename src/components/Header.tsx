@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useGamification } from '../context/gamification-context';
@@ -9,11 +9,13 @@ import { Flame, Coins, Trophy, RefreshCw, GraduationCap, Users, User, ArrowRight
 export const Header: React.FC = () => {
   const pathname = usePathname();
   const { stats, resetAllData, studentsList, activeStudentId, switchStudent } = useGamification();
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const getRoleFromPath = () => {
     if (pathname.startsWith('/student')) return 'student';
     if (pathname.startsWith('/teacher')) return 'teacher';
     if (pathname.startsWith('/parent')) return 'parent';
+    if (pathname.startsWith('/coordinator')) return 'coordinator';
     return 'none';
   };
 
@@ -91,6 +93,17 @@ export const Header: React.FC = () => {
               Muro de Logros (Hijo)
             </Link>
           )}
+
+          {currentRole === 'coordinator' && (
+            <Link
+              href="/coordinator"
+              className={`text-sm font-semibold transition-colors ${
+                pathname === '/coordinator' ? 'text-blue-600 dark:text-blue-400' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
+              }`}
+            >
+              Control de Grupos y Horarios
+            </Link>
+          )}
         </nav>
 
         {/* Stats & Role Switcher */}
@@ -165,16 +178,21 @@ export const Header: React.FC = () => {
             >
               Tutor
             </Link>
+            <Link
+              href="/coordinator"
+              className={`px-2 py-1 rounded text-xs font-semibold transition-all ${
+                currentRole === 'coordinator'
+                  ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-zinc-500 hover:text-zinc-950 dark:text-zinc-400 dark:hover:text-white'
+              }`}
+            >
+              Coordinador
+            </Link>
           </div>
 
           {/* Reset Button */}
           <button
-            onClick={() => {
-              if (confirm('¿Quieres reiniciar los datos simulados a su estado original?')) {
-                resetAllData();
-                window.location.reload();
-              }
-            }}
+            onClick={() => setIsResetConfirmOpen(true)}
             title="Reiniciar Datos"
             className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900 transition-colors"
           >
@@ -182,6 +200,38 @@ export const Header: React.FC = () => {
           </button>
         </div>
       </div>
+
+      {/* Custom Reset Confirmation Modal */}
+      {isResetConfirmOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="relative w-full max-w-md bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden shadow-2xl p-6 border border-zinc-200 dark:border-zinc-800">
+            <h3 className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-2 mb-2">
+              ⚠️ ¿Restablecer Datos Simulados?
+            </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 leading-relaxed">
+              Esta acción eliminará todos los alumnos registrados, grupos conformados y horarios creados durante esta sesión de prueba, restaurando las semillas originales. ¿Deseas continuar?
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setIsResetConfirmOpen(false)}
+                className="px-4 py-2 border rounded-full text-xs font-bold text-zinc-500 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  resetAllData();
+                  setIsResetConfirmOpen(false);
+                  window.location.reload();
+                }}
+                className="px-5 py-2 bg-red-600 hover:bg-red-500 text-white rounded-full text-xs font-bold shadow-md shadow-red-500/10 transition-all"
+              >
+                Sí, restablecer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 };
