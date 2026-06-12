@@ -6,7 +6,7 @@ import { Header } from '@/components/Header';
 import { 
   ArrowLeft, Play, FileSpreadsheet, AudioLines, 
   CheckCircle2, XCircle, ChevronRight, Coins, 
-  Trophy, Sparkles, Upload, FileImage, Mic, HelpCircle, ArrowRight, Lock
+  Trophy, Sparkles, Upload, FileImage, Mic, HelpCircle, ArrowRight, Lock, Award, Heart, Brain
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -16,7 +16,7 @@ interface MissionPageProps {
 
 export default function MissionPage({ params }: MissionPageProps) {
   const { id } = use(params);
-  const { missions, stats, submitQuiz, submitPortfolioItem, questAttempts } = useGamification();
+  const { missions, stats, submitQuiz, submitPortfolioItem, questAttempts, submitExam } = useGamification();
   
   // Buscar misión
   const mission = missions.find(m => m.id === id);
@@ -25,6 +25,20 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [selectedQuest, setSelectedQuest] = useState<any>(null);
   const [isPlayingQuiz, setIsPlayingQuiz] = useState(false);
   const [isSubmittingEvidence, setIsSubmittingEvidence] = useState(false);
+  const [isPlayingExam, setIsPlayingExam] = useState(false);
+
+  // Estados para Examen / Boss Battle
+  const [examCurrentQuestionIdx, setExamCurrentQuestionIdx] = useState(0);
+  const [examSelectedOptionIdx, setExamSelectedOptionIdx] = useState<number | null>(null);
+  const [isExamAnswerSubmitted, setIsExamAnswerSubmitted] = useState(false);
+  const [examCorrectCount, setExamCorrectCount] = useState(0);
+  const [playerHp, setPlayerHp] = useState(100);
+  const [bossHp, setBossHp] = useState(100);
+  const [bossMaxHp, setBossMaxHp] = useState(100);
+  const [combatLog, setCombatLog] = useState<string[]>([]);
+  const [examAnswers, setExamAnswers] = useState<Record<string, number>>({});
+  const [examResult, setExamResult] = useState<{ xpEarned: number, coinsEarned: number, leveledUp: boolean, badgeEarned: any } | null>(null);
+  const [bossBattlePhase, setBossBattlePhase] = useState<'intro' | 'fight' | 'victory' | 'defeat'>('intro');
   
   // Cuestionario (Quiz State)
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -162,6 +176,115 @@ export default function MissionPage({ params }: MissionPageProps) {
     setIsSubmissionFinished(true);
   };
 
+  // --- LOGICA DE EXAMEN / COMBATE DE JEFE ---
+
+  const startBossBattle = (quest: any) => {
+    setSelectedQuest(quest);
+    setIsPlayingExam(true);
+    setExamCurrentQuestionIdx(0);
+    setExamSelectedOptionIdx(null);
+    setIsExamAnswerSubmitted(false);
+    setExamCorrectCount(0);
+    setPlayerHp(100);
+    
+    const maxHp = (quest.content as any).bossHp || 100;
+    setBossHp(maxHp);
+    setBossMaxHp(maxHp);
+    setCombatLog([`⚔️ ¡Te enfrentas a ${quest.content.bossName || 'Jefe'}! Prepárate para el combate.`]);
+    setExamAnswers({});
+    setExamResult(null);
+    setBossBattlePhase('intro');
+  };
+
+  const handleExamAnswerSubmit = (optionIndex: number) => {
+    if (isExamAnswerSubmitted || bossHp <= 0 || playerHp <= 0) return;
+
+    const questions = (selectedQuest.content as any).questions;
+    const currentQuestion = questions[examCurrentQuestionIdx];
+    const isCorrect = optionIndex === currentQuestion.correctAnswerIndex;
+
+    setExamSelectedOptionIdx(optionIndex);
+    setIsExamAnswerSubmitted(true);
+
+    setExamAnswers(prev => ({
+      ...prev,
+      [currentQuestion.id]: optionIndex
+    }));
+
+    if (isCorrect) {
+      setExamCorrectCount(prev => prev + 1);
+      
+      // Daño base escalado según número de preguntas para derrotar al boss al final
+      const baseDmg = Math.round(bossMaxHp / questions.length);
+      const intelBonus = Math.round((stats.attribute_intelligence || 1) * 2.5);
+      const totalDmg = baseDmg + intelBonus;
+      const newBossHp = Math.max(0, bossHp - totalDmg);
+      setBossHp(newBossHp);
+
+      setCombatLog(prev => [
+        `⚔️ ¡Golpe Crítico! Respondiste correctamente. Haces ${totalDmg} de daño a ${selectedQuest.content.bossName || 'Jefe'} (Intelecto +${intelBonus})`,
+        ...prev
+      ]);
+    } else {
+      const bossMaxDmg = selectedQuest.content.bossMaxDmg || 20;
+      const baseDmgIn = Math.round(bossMaxDmg * (0.8 + Math.random() * 0.4));
+      const defReduction = Math.round((stats.attribute_defense || 1) * 1.5);
+      const finalDmgIn = Math.max(5, baseDmgIn - defReduction);
+      const newPlayerHp = Math.max(0, playerHp - finalDmgIn);
+      setPlayerHp(newPlayerHp);
+
+      setCombatLog(prev => [
+        `💥 ¡Contraataque! Respuesta incorrecta. Recibes ${finalDmgIn} de daño de ${selectedQuest.content.bossName || 'Jefe'} (Defensa redujo ${defReduction})`,
+        ...prev
+      ]);
+    }
+  };
+
+  const continueBossBattle = () => {
+    const questions = (selectedQuest.content as any).questions;
+
+    if (bossHp <= 0) {
+      setBossBattlePhase('victory');
+      const score = Math.max(60, Math.round((examCorrectCount / questions.length) * 100));
+      const results = submitExam(
+        selectedQuest.id,
+        score,
+        examAnswers,
+        selectedQuest.content.statBoost,
+        selectedQuest.content.customLoot
+      );
+      setExamResult(results as any);
+    } else if (playerHp <= 0) {
+      setBossBattlePhase('defeat');
+      const score = Math.round((examCorrectCount / questions.length) * 100);
+      submitExam(selectedQuest.id, score, examAnswers, undefined, undefined);
+    } else if (examCurrentQuestionIdx < questions.length - 1) {
+      setExamCurrentQuestionIdx(prev => prev + 1);
+      setExamSelectedOptionIdx(null);
+      setIsExamAnswerSubmitted(false);
+    } else {
+      // Llegó al final de las preguntas
+      const passRate = examCorrectCount / questions.length;
+      if (passRate >= 0.6) {
+        setBossHp(0);
+        setBossBattlePhase('victory');
+        const score = Math.round((examCorrectCount / questions.length) * 100);
+        const results = submitExam(
+          selectedQuest.id,
+          score,
+          examAnswers,
+          selectedQuest.content.statBoost,
+          selectedQuest.content.customLoot
+        );
+        setExamResult(results as any);
+      } else {
+        setBossBattlePhase('defeat');
+        const score = Math.round((examCorrectCount / questions.length) * 100);
+        submitExam(selectedQuest.id, score, examAnswers, undefined, undefined);
+      }
+    }
+  };
+
   // Helper para ver si este quest ya fue completado
   const getQuestStatus = (questId: string) => {
     const attempts = questAttempts.filter(a => a.quest_id === questId);
@@ -184,14 +307,14 @@ export default function MissionPage({ params }: MissionPageProps) {
 
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         
-        {!isPlayingQuiz && !isSubmittingEvidence && (
+        {!isPlayingQuiz && !isSubmittingEvidence && !isPlayingExam && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* Detalles de la Misión / Historia (Izquierda) */}
             <div className="lg:col-span-1 flex flex-col gap-6">
               <div className="rounded-3xl border border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-900 p-6 shadow-sm">
                 <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400">
-                  {mission.subject_id === 'sub-math' ? 'Matemáticas' : 'Español'}
+                  {mission.subject_id === 'sub-math' ? 'Matemáticas' : mission.subject_id === 'sub-sci' ? 'Ciencias Naturales' : 'Español'}
                 </span>
                 
                 <h1 className="text-2xl font-black mt-3 text-zinc-950 dark:text-white">{mission.title}</h1>
@@ -202,7 +325,7 @@ export default function MissionPage({ params }: MissionPageProps) {
                     <Sparkles className="h-4 w-4" />
                     Bitácora del Explorador
                   </p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed italic">
+                  <p className="text-xs text-zinc-600 dark:text-zinc-350 leading-relaxed italic">
                     "{mission.story_intro}"
                   </p>
                 </div>
@@ -230,15 +353,19 @@ export default function MissionPage({ params }: MissionPageProps) {
                       }`}
                     >
                       {/* Icono e Info */}
-                      <div className="flex gap-4 items-center">
+                      <div className="flex gap-4 items-center font-bold">
                         <div className={`p-3 rounded-xl ${
                           isLocked 
                             ? 'bg-zinc-100 text-zinc-400 dark:bg-zinc-950'
                             : status === 'completed'
                               ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                              : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
+                              : quest.type === 'exam'
+                                ? 'bg-purple-100 text-purple-650 dark:bg-purple-950 dark:text-purple-400'
+                                : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
                         }`}>
-                          {quest.type === 'quiz' ? (
+                          {quest.type === 'exam' ? (
+                            <Trophy className="h-6 w-6 animate-bounce" />
+                          ) : quest.type === 'quiz' ? (
                             <FileSpreadsheet className="h-6 w-6" />
                           ) : (
                             <AudioLines className="h-6 w-6" />
@@ -248,25 +375,30 @@ export default function MissionPage({ params }: MissionPageProps) {
                           <div className="flex items-center gap-2">
                             <span className="text-[10px] font-bold text-zinc-400">RETO {index + 1}</span>
                             {status === 'completed' && (
-                              <span className="text-[9px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 px-1.5 py-0.5 rounded-full font-black">
                                 ¡Completado!
                               </span>
                             )}
                             {status === 'failed' && (
-                              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400 px-1.5 py-0.5 rounded-full">
+                              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400 px-1.5 py-0.5 rounded-full font-black">
                                 Intentar de nuevo
+                              </span>
+                            )}
+                            {quest.type === 'exam' && (
+                              <span className="text-[9px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-black animate-pulse">
+                                ⚔️ BATALLA DE JEFE
                               </span>
                             )}
                           </div>
                           <h3 className="text-md font-bold text-zinc-900 dark:text-white mt-0.5">{quest.title}</h3>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-normal max-w-md">{quest.description}</p>
+                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-normal max-w-md font-semibold">{quest.description}</p>
                         </div>
                       </div>
 
                       {/* Botón y Recompensas */}
                       <div className="flex items-center gap-4 self-stretch md:self-auto justify-between border-t md:border-t-0 pt-3 md:pt-0 border-zinc-100 dark:border-zinc-800">
                         {/* Recompensas */}
-                        <div className="flex items-center gap-3 text-xs font-bold">
+                        <div className="flex items-center gap-3 text-xs font-black">
                           <span className="text-blue-500">{quest.xp_reward} XP</span>
                           <span className="text-yellow-500 flex items-center gap-0.5">
                             <Coins className="h-3.5 w-3.5 fill-current" />
@@ -281,14 +413,24 @@ export default function MissionPage({ params }: MissionPageProps) {
                           </div>
                         ) : (
                           <button
-                            onClick={() => quest.type === 'quiz' ? startQuiz(quest) : startSubmission(quest)}
-                            className={`px-4 py-2 rounded-xl text-xs font-bold text-white transition-all ${
+                            onClick={() => {
+                              if (quest.type === 'exam') {
+                                startBossBattle(quest);
+                              } else if (quest.type === 'quiz') {
+                                startQuiz(quest);
+                              } else {
+                                startSubmission(quest);
+                              }
+                            }}
+                            className={`px-4 py-2 rounded-xl text-xs font-black text-white transition-all ${
                               status === 'completed'
-                                ? 'bg-zinc-800 hover:bg-zinc-700 dark:bg-zinc-700 dark:hover:bg-zinc-600'
-                                : 'bg-blue-600 hover:bg-blue-500'
+                                ? 'bg-zinc-850 hover:bg-zinc-750 dark:bg-zinc-800 dark:hover:bg-zinc-700'
+                                : quest.type === 'exam'
+                                  ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-500/10'
+                                  : 'bg-blue-600 hover:bg-blue-500'
                             }`}
                           >
-                            {status === 'completed' ? 'Reintentar' : 'Jugar'}
+                            {status === 'completed' ? 'Reintentar' : quest.type === 'exam' ? 'Desafiar Jefe ⚔️' : 'Jugar'}
                           </button>
                         )}
                       </div>
@@ -625,6 +767,356 @@ export default function MissionPage({ params }: MissionPageProps) {
                 >
                   Regresar a la Misión
                 </button>
+              </div>
+            )}
+
+          </div>
+        )}
+
+        {/* --- MODO COMBATE DE JEFE (EXAMEN) --- */}
+        {isPlayingExam && selectedQuest && (
+          <div className="max-w-4xl mx-auto bg-zinc-950 text-white rounded-3xl overflow-hidden border border-purple-900/50 shadow-2xl shadow-purple-950/20 animate-scale-up">
+            
+            {/* Header del Combate */}
+            <div className="px-6 py-4 bg-zinc-900 border-b border-purple-950 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-ping" />
+                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Encuentro de Jefe de Zona (Examen)</span>
+              </div>
+              <button
+                onClick={() => {
+                  if (confirm('¿Quieres huir del combate? Tu HP se reducirá y perderás el progreso.')) {
+                    setIsPlayingExam(false);
+                    setSelectedQuest(null);
+                  }
+                }}
+                className="text-xs font-bold text-zinc-400 hover:text-red-400 transition-colors"
+              >
+                Huir de la batalla 🏃‍♂️
+              </button>
+            </div>
+
+            {bossBattlePhase === 'intro' ? (
+              // FASE INTRODUCCIÓN LORE
+              <div className="p-8 text-center flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-zinc-900 to-zinc-950">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-purple-500/20 blur-xl rounded-full" />
+                  <Trophy className="h-20 w-20 text-purple-500 relative animate-pulse" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-purple-400 tracking-wider">¡SE APROXIMA EL JEFE DE NIVEL!</h2>
+                  <h3 className="text-xl font-bold text-white mt-1">{selectedQuest.content.bossName || 'Tirano Oscuro'}</h3>
+                  <p className="text-xs text-purple-300 font-semibold mt-1">HP: {selectedQuest.content.bossHp || 100} | Daño: 10-{selectedQuest.content.bossMaxDmg || 20}</p>
+                </div>
+
+                <div className="max-w-md p-5 rounded-2xl bg-zinc-900/80 border border-purple-950/60 leading-relaxed font-semibold italic text-xs text-zinc-350 shadow-inner">
+                  "{selectedQuest.content.storyIntro || 'Un gran reto te espera. Usa tus saberes para derrotar al guardián.'}"
+                </div>
+
+                {/* RPG stats del alumno */}
+                <div className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800 w-full max-w-sm flex justify-around text-center text-xs">
+                  <div>
+                    <span className="text-red-500 block font-bold">Fuerza 💪</span>
+                    <span className="text-md font-black">{stats.attribute_strength || 1}</span>
+                  </div>
+                  <div className="border-l border-zinc-800 h-8 self-center" />
+                  <div>
+                    <span className="text-blue-400 block font-bold">Intelecto 🔮</span>
+                    <span className="text-md font-black">{stats.attribute_intelligence || 1}</span>
+                  </div>
+                  <div className="border-l border-zinc-800 h-8 self-center" />
+                  <div>
+                    <span className="text-emerald-400 block font-bold">Defensa 🛡️</span>
+                    <span className="text-md font-black">{stats.attribute_defense || 1}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setBossBattlePhase('fight')}
+                  className="px-8 py-3 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-full shadow-lg shadow-purple-500/20 transition-all hover:scale-105 uppercase tracking-widest flex items-center gap-2"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  Iniciar Combate
+                </button>
+              </div>
+            ) : bossBattlePhase === 'fight' ? (
+              // FASE COMBATE
+              <div className="p-6 flex flex-col gap-6 bg-zinc-950">
+                {/* Visualizadores de HP (Personaje vs Jefe) */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center col-span-2">
+                  
+                  {/* Estudiante stats */}
+                  <div className="p-4 rounded-2xl bg-zinc-900 border border-zinc-800 flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-xs font-black text-zinc-300 font-black">Explorador (Tú)</span>
+                      <span className="text-xs font-black text-zinc-400 font-black">HP {playerHp}/100</span>
+                    </div>
+                    {/* Barra de HP */}
+                    <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${
+                          playerHp > 50 ? 'bg-emerald-500' : playerHp > 20 ? 'bg-yellow-500' : 'bg-red-500 animate-pulse'
+                        }`}
+                        style={{ width: `${playerHp}%` }}
+                      />
+                    </div>
+                    <div className="flex gap-4 text-[10px] font-bold text-zinc-400 mt-1">
+                      <span>Fuerza: <strong className="text-red-550">{stats.attribute_strength || 1}</strong></span>
+                      <span>Intelecto: <strong className="text-blue-400">{stats.attribute_intelligence || 1}</strong></span>
+                      <span>Defensa: <strong className="text-emerald-405">{stats.attribute_defense || 1}</strong></span>
+                    </div>
+                  </div>
+
+                  {/* Jefe stats */}
+                  <div className="p-4 rounded-2xl bg-zinc-900 border border-purple-950/60 flex flex-col gap-2">
+                    <div className="flex justify-between items-center font-black">
+                      <span className="text-xs font-black text-purple-400">{selectedQuest.content.bossName}</span>
+                      <span className="text-xs font-black text-purple-300">HP {bossHp}/{bossMaxHp}</span>
+                    </div>
+                    {/* Barra de HP */}
+                    <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full transition-all duration-500 ${
+                          bossHp > 50 ? 'bg-purple-650' : bossHp > 20 ? 'bg-fuchsia-500' : 'bg-red-650 animate-pulse'
+                        }`}
+                        style={{ width: `${(bossHp / bossMaxHp) * 100}%` }}
+                      />
+                    </div>
+                    <div className="text-[10px] text-zinc-400 mt-1 flex justify-between font-bold">
+                      <span>Alineación: <strong className="text-indigo-400">NEM Integral</strong></span>
+                      <span className="text-rose-450">Poder: 10-{selectedQuest.content.bossMaxDmg || 20}</span>
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Combat Log */}
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 max-h-[90px] overflow-y-auto text-[10px] leading-relaxed flex flex-col gap-1 font-mono text-zinc-400">
+                  {combatLog.map((log, idx) => (
+                    <div key={idx} className={log.startsWith('⚔️') ? 'text-emerald-400 font-semibold' : log.startsWith('💥') ? 'text-red-400 font-semibold' : 'text-zinc-300'}>
+                      {log}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="border-t border-zinc-900 pt-5">
+                  {/* Preguntas y Progreso */}
+                  <div className="flex justify-between items-center text-xs font-bold text-zinc-500 mb-3">
+                    <span>Ronda {examCurrentQuestionIdx + 1} de {(selectedQuest.content as any).questions.length}</span>
+                    <span className="text-[10px] bg-purple-950/60 text-purple-400 px-2 py-0.5 rounded border border-purple-900/40">
+                      Modo Combate
+                    </span>
+                  </div>
+
+                  {/* Pregunta */}
+                  <h3 className="text-md font-bold text-white mb-5">
+                    {(selectedQuest.content as any).questions[examCurrentQuestionIdx].question}
+                  </h3>
+
+                  {/* Opciones */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(selectedQuest.content as any).questions[examCurrentQuestionIdx].options.map((opt: string, idx: number) => {
+                      const isCorrectAnswer = idx === (selectedQuest.content as any).questions[examCurrentQuestionIdx].correctAnswerIndex;
+                      const isSelected = examSelectedOptionIdx === idx;
+                      
+                      let btnStyle = 'border-zinc-800 hover:bg-zinc-900 text-zinc-300';
+                      
+                      if (isExamAnswerSubmitted) {
+                        if (isCorrectAnswer) {
+                          btnStyle = 'border-emerald-600 bg-emerald-955/20 text-emerald-400';
+                        } else if (isSelected) {
+                          btnStyle = 'border-rose-600 bg-rose-955/20 text-rose-400';
+                        } else {
+                          btnStyle = 'border-zinc-800 opacity-40';
+                        }
+                      }
+
+                      return (
+                        <button
+                          key={idx}
+                          disabled={isExamAnswerSubmitted}
+                          onClick={() => handleExamAnswerSubmit(idx)}
+                          className={`flex items-center gap-3 p-4 rounded-2xl border text-left font-semibold text-sm transition-all ${btnStyle}`}
+                        >
+                          <span className="h-6 w-6 rounded-full bg-zinc-900 flex items-center justify-center text-[11px] font-bold text-zinc-500 border border-zinc-800">
+                            {String.fromCharCode(65 + idx)}
+                          </span>
+                          <span>{opt}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Retroalimentación NEM Formativa Inmediata */}
+                  {isExamAnswerSubmitted && (
+                    <div className={`mt-5 p-4 rounded-2xl border flex items-start gap-3 animate-fade-in ${
+                      examSelectedOptionIdx === (selectedQuest.content as any).questions[examCurrentQuestionIdx].correctAnswerIndex
+                        ? 'border-emerald-900 bg-emerald-955/10'
+                        : 'border-rose-900 bg-rose-955/10'
+                    }`}>
+                      {examSelectedOptionIdx === (selectedQuest.content as any).questions[examCurrentQuestionIdx].correctAnswerIndex ? (
+                        <CheckCircle2 className="h-5 w-5 text-emerald-400 flex-shrink-0 mt-0.5" />
+                      ) : (
+                        <XCircle className="h-5 w-5 text-rose-400 flex-shrink-0 mt-0.5" />
+                      )}
+                      <div>
+                        <p className="text-[9px] font-extrabold uppercase tracking-wider text-zinc-500 mb-1">Efecto Formativo</p>
+                        <p className="text-xs text-zinc-300 leading-normal font-semibold">
+                          {(selectedQuest.content as any).questions[examCurrentQuestionIdx].explanation}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Botón Siguiente / Continuar Combate */}
+                  {isExamAnswerSubmitted && (
+                    <div className="mt-6 flex justify-end">
+                      <button
+                        onClick={continueBossBattle}
+                        className="px-6 py-2.5 rounded-full bg-purple-650 hover:bg-purple-600 text-white font-bold text-xs flex items-center gap-1.5 shadow-md shadow-purple-500/10"
+                      >
+                        Continuar Combate
+                        <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : bossBattlePhase === 'victory' ? (
+              // FASE VICTORIA
+              <div className="p-8 text-center flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-zinc-900 to-zinc-950">
+                <div className="h-20 w-20 rounded-full bg-purple-900/50 text-purple-400 flex items-center justify-center animate-bounce border border-purple-500/30">
+                  <Trophy className="h-10 w-10 text-purple-400" />
+                </div>
+
+                <div>
+                  <h3 className="text-2xl font-black text-purple-400">¡VICTORIA LEGENDARIA!</h3>
+                  <p className="text-sm text-zinc-300 mt-2 max-w-sm mx-auto font-semibold">
+                    Lograste derrotar a <strong className="text-purple-300 font-extrabold">{selectedQuest.content.bossName}</strong> y restablecer el balance en la asignatura.
+                  </p>
+                </div>
+
+                {/* Desglose de Recompensas Básicas */}
+                {examResult && (
+                  <div className="bg-zinc-900/60 p-5 rounded-2xl border border-zinc-800 w-full max-w-md grid grid-cols-2 gap-4 text-center font-black">
+                    <div className="flex flex-col items-center justify-center">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">EXPERIENCIA</span>
+                      <span className="text-lg font-black text-blue-400 mt-1">+{examResult.xpEarned} XP</span>
+                    </div>
+                    <div className="flex flex-col items-center justify-center border-l border-zinc-800">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">MONEDAS</span>
+                      <span className="text-lg font-black text-yellow-500 flex items-center gap-0.5 mt-1 justify-center">
+                        <Coins className="h-5 w-5 fill-current" />
+                        +{examResult.coinsEarned}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Atributos e Items Desbloqueados */}
+                <div className="bg-purple-950/20 border border-purple-900/35 rounded-2xl p-5 w-full max-w-md text-left flex flex-col gap-3 font-semibold text-xs text-zinc-300">
+                  <span className="text-[9px] font-black text-purple-400 uppercase tracking-wider border-b border-purple-900/30 pb-1.5 flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                    MEJORAS ACADÉMICAS Y DE PERSONAJE OBTENIDAS:
+                  </span>
+                  
+                  {selectedQuest.content.statBoost && (
+                    <div className="flex flex-col gap-1.5">
+                      <p>✨ <strong>Aumento permanente de Atributos RPG:</strong></p>
+                      <div className="flex gap-4 pl-3">
+                        {(selectedQuest.content.statBoost.strength || 0) > 0 && <span className="text-red-400 font-bold">Fuerza 💪 +{selectedQuest.content.statBoost.strength}</span>}
+                        {(selectedQuest.content.statBoost.intelligence || 0) > 0 && <span className="text-blue-400 font-bold">Intelecto 🔮 +{selectedQuest.content.statBoost.intelligence}</span>}
+                        {(selectedQuest.content.statBoost.defense || 0) > 0 && <span className="text-emerald-400 font-bold">Defensa 🛡️ +{selectedQuest.content.statBoost.defense}</span>}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedQuest.content.customLoot && (
+                    <div className="flex items-center gap-2 text-zinc-200 mt-1 bg-zinc-900/40 p-2.5 rounded-xl border border-zinc-800">
+                      <Award className="h-5 w-5 text-yellow-500" />
+                      <div>
+                        <p className="text-[10px] text-zinc-400 uppercase">Loot Especial Desbloqueado</p>
+                        <p className="font-extrabold text-white text-xs">
+                          {selectedQuest.content.customLoot === 'corona_boss' ? 'Corona del Conquistador 👑' :
+                           selectedQuest.content.customLoot === 'mascara_gas' ? 'Máscara de Gas del Ecosistema ☣️' :
+                           selectedQuest.content.customLoot === 'baculo_runico' ? 'Báculo Sagrado de Runas 🔮' :
+                           selectedQuest.content.customLoot === 'capa_leyenda' ? 'Capa de la Leyenda Áurea 🧥' : 'Escudo del Destino 🛡️'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="text-[10px] text-emerald-400 flex items-center gap-1.5 mt-1 bg-emerald-950/20 p-2.5 rounded-xl border border-emerald-900/20">
+                    <Heart className="h-4 w-4 fill-current text-emerald-450 flex-shrink-0" />
+                    <span>¡Tu mascota ha comido y se siente sumamente feliz! Sus stats se han recuperado al 100%.</span>
+                  </div>
+                </div>
+
+                {examResult?.leveledUp && (
+                  <div className="p-4 rounded-xl border border-emerald-500 bg-emerald-950/20 text-emerald-400 flex items-center gap-2 text-xs font-bold animate-pulse">
+                    <Sparkles className="h-4 w-4" />
+                    ¡Subiste de nivel! Has ganado puntos de habilidad adicionales.
+                  </div>
+                )}
+
+                <button
+                  onClick={() => {
+                    setIsPlayingExam(false);
+                    setSelectedQuest(null);
+                  }}
+                  className="px-8 py-3 bg-white hover:bg-zinc-200 text-zinc-950 rounded-full font-black text-xs transition-all shadow-md uppercase tracking-wider"
+                >
+                  Regresar a la Misión
+                </button>
+              </div>
+            ) : (
+              // FASE DEFEAT
+              <div className="p-8 text-center flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-zinc-900 to-zinc-950">
+                <div className="h-20 w-20 rounded-full bg-red-950/50 text-red-500 flex items-center justify-center animate-pulse border border-red-900/30">
+                  <XCircle className="h-10 w-10 text-red-500" />
+                </div>
+
+                <div>
+                  <h3 className="text-2xl font-black text-red-500">¡HAS SIDO DERROTADO!</h3>
+                  <p className="text-sm text-zinc-300 mt-2 max-w-sm mx-auto font-semibold">
+                    No lograste resistir los ataques de <strong className="text-purple-300 font-extrabold">{selectedQuest.content.bossName}</strong>. 
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1 max-w-xs mx-auto leading-relaxed font-semibold">
+                    Revisa las explicaciones de las preguntas, repasa los conceptos de la Nueva Escuela Mexicana y vuelve a desafiar al jefe.
+                  </p>
+                </div>
+
+                {/* Atributos informativos */}
+                <div className="bg-zinc-900/60 p-4 rounded-2xl border border-zinc-800 w-full max-w-md text-left text-xs text-zinc-400 flex flex-col gap-2 leading-relaxed font-semibold">
+                  <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider block border-b border-zinc-800 pb-1 flex items-center gap-1 font-black">
+                    <Brain className="h-4 w-4 text-red-400" />
+                    Consejo RPG Académico:
+                  </span>
+                  <p>
+                    🔮 **Aumenta tu atributo de Intelecto** resolviendo tareas regulares para hacer más daño al jefe con cada respuesta correcta.
+                  </p>
+                  <p>
+                    🛡️ **Mejora tu Defensa** para reducir el contraataque del jefe cuando te equivoques.
+                  </p>
+                </div>
+
+                <div className="flex gap-3 mt-2">
+                  <button
+                    onClick={() => setBossBattlePhase('intro')}
+                    className="px-6 py-2.5 bg-purple-650 hover:bg-purple-700 text-white rounded-full font-bold text-xs transition-all shadow-md"
+                  >
+                    Volver a Intentar
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsPlayingExam(false);
+                      setSelectedQuest(null);
+                    }}
+                    className="px-6 py-2.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 border border-zinc-800 rounded-full font-bold text-xs transition-all"
+                  >
+                    Retirarse
+                  </button>
+                </div>
               </div>
             )}
 

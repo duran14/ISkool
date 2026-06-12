@@ -215,7 +215,7 @@ export interface Mission {
   quests?: Quest[];
 }
 
-export type QuestType = 'quiz' | 'portfolio_submission';
+export type QuestType = 'quiz' | 'portfolio_submission' | 'exam';
 
 export interface QuizQuestion {
   id: string;
@@ -227,6 +227,14 @@ export interface QuizQuestion {
 
 export interface QuizContent {
   questions: QuizQuestion[];
+}
+
+export interface ExamContent {
+  questions: QuizQuestion[];
+  bossName: string;
+  bossHp: number;
+  bossMaxDmg: number;
+  storyIntro: string;
 }
 
 export interface SubmissionContent {
@@ -243,8 +251,11 @@ export interface Quest {
   sequence_order: number;
   xp_reward: number;
   coins_reward: number;
-  content: QuizContent | SubmissionContent;
+  content: QuizContent | SubmissionContent | ExamContent;
   created_at: string;
+  campos_formativos?: string[];
+  ejes_articuladores?: string[];
+  pdas?: string[];
 }
 
 export interface QuestAttempt {
@@ -398,6 +409,25 @@ export interface ClassSchedule {
   dayOfWeek: 'Lunes' | 'Martes' | 'Miércoles' | 'Jueves' | 'Viernes';
   timeSlot: string;
 }
+
+export interface ParentMessage {
+  id: string;
+  parent_id: string;
+  student_id: string;
+  student_name: string;
+  teacher_id: string;
+  teacher_name: string;
+  subject_id: string;
+  subject_name: string;
+  quest_id?: string;
+  quest_title?: string;
+  message: string;
+  sent_at: string;
+  is_read: boolean;
+  parent_reply?: string;
+  replied_at?: string;
+}
+
 
 
 

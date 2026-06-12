@@ -19,7 +19,10 @@ import {
    DetailedStudent,
    ClassSchedule,
    Group,
-   SchoolSettings
+   SchoolSettings,
+   Attendance,
+   AttendanceStatus,
+   ParentMessage
  } from '../types';
  
  
@@ -49,6 +52,14 @@ import {
    deleteSchedule: (scheduleId: string) => void;
    deleteGroup: (groupId: string) => void;
 
+   // Asistencia y Mensajería a Padres
+   attendanceList: Attendance[];
+   parentMessages: ParentMessage[];
+   saveAttendanceList: (records: Omit<Attendance, 'id' | 'created_at' | 'registered_by'>[]) => void;
+   sendParentMessage: (msg: Omit<ParentMessage, 'id' | 'sent_at' | 'is_read'>) => void;
+   replyToParentMessage: (messageId: string, replyText: string) => void;
+   markMessageAsRead: (messageId: string) => void;
+
   
   // Perfiles Simulación
   currentStudent: UserProfile;
@@ -65,10 +76,12 @@ import {
   submitGuildHomework: (studentId: string, onTime: boolean) => void;
   
   // Acciones
+  saveQuest: (subjectId: string, questData: Omit<Quest, 'created_at'> & { id?: string }) => void;
   switchStudent: (studentId: string) => void;
   changeAvatar: (config: Partial<StudentAvatar>) => void;
   submitQuiz: (questId: string, score: number, answers: any) => { xpEarned: number, coinsEarned: number, leveledUp: boolean, badgeEarned: Badge | null };
   submitPortfolioItem: (title: string, description: string, fileUrl: string, fileType: any, selfReflection: string, questId?: string, subjectId?: string) => void;
+  submitPortfolioItemOnBehalf: (studentId: string, title: string, description: string, fileUrl: string, fileType: any, selfReflection: string, questId?: string, subjectId?: string) => void;
   addPortfolioFeedback: (itemId: string, text: string, role: FeedbackAuthorRole, authorId: string) => void;
   addReaction: (itemId: string, roleCategory: string, emoji: string) => void;
   reviewPortfolioItem: (
@@ -92,7 +105,15 @@ import {
   playWithPet: () => void;
   levelUpAttribute: (statName: 'strength' | 'intelligence' | 'defense') => void;
   submitPeerReview: (itemId: string, score: number, comment: string) => void;
+  submitExam: (
+    questId: string, 
+    score: number, 
+    answers: any, 
+    statBoost?: { strength?: number; intelligence?: number; defense?: number },
+    customLoot?: string
+  ) => { xpEarned: number, coinsEarned: number, leveledUp: boolean, badgeEarned: Badge | null };
   
+  linkPortfolioItemToQuest: (itemId: string, questId: string) => void;
   resetAllData: () => void;
 }
 
@@ -140,6 +161,9 @@ const MISSIONS_SEED: Mission[] = [
         xp_reward: 100,
         coins_reward: 15,
         created_at: new Date().toISOString(),
+        campos_formativos: ['Saberes y Pensamiento Científico'],
+        ejes_articuladores: ['Pensamiento Crítico'],
+        pdas: ['Fase 4 - Saberes y Pensamiento Científico: Resuelve problemas de reparto con fracciones (medios, cuartos, octavos).'],
         content: {
           questions: [
             {
@@ -169,6 +193,9 @@ const MISSIONS_SEED: Mission[] = [
         xp_reward: 150,
         coins_reward: 25,
         created_at: new Date().toISOString(),
+        campos_formativos: ['Saberes y Pensamiento Científico'],
+        ejes_articuladores: ['Pensamiento Crítico'],
+        pdas: ['Fase 4 - Saberes y Pensamiento Científico: Resuelve problemas de reparto con fracciones (medios, cuartos, octavos).'],
         content: {
           instructions: '1. Dibuja un círculo grande en tu cuaderno.\n2. Divídelo en 8 partes iguales.\n3. Colorea exactamente 5 partes.\n4. Escribe la fracción 5/8.\n5. Tómale una foto y súbela aquí.',
           acceptedFormats: ['image']
@@ -199,6 +226,9 @@ const MISSIONS_SEED: Mission[] = [
         xp_reward: 80,
         coins_reward: 10,
         created_at: new Date().toISOString(),
+        campos_formativos: ['Lenguajes'],
+        ejes_articuladores: ['Fomento a la Lectura', 'Artes y Exp. Estéticas'],
+        pdas: ['Fase 4 - Lenguajes: Lee y analiza leyendas y poemas tradicionales para valorar la diversidad cultural.'],
         content: {
           questions: [
             {
@@ -221,6 +251,9 @@ const MISSIONS_SEED: Mission[] = [
         xp_reward: 150,
         coins_reward: 30,
         created_at: new Date().toISOString(),
+        campos_formativos: ['Lenguajes'],
+        ejes_articuladores: ['Fomento a la Lectura', 'Artes y Exp. Estéticas'],
+        pdas: ['Fase 4 - Lenguajes: Lee y analiza leyendas y poemas tradicionales para valorar la diversidad cultural.'],
         content: {
           instructions: 'Lee el siguiente fragmento en voz alta con entonación:\n"Bajo las sombras del ceiba milenario, ruge el jaguar con ojos de fuego."\nGraba tu voz y súbela aquí.',
           acceptedFormats: ['audio']
@@ -749,6 +782,50 @@ const GUILD_SUBMISSIONS_SEED: GuildMemberSubmission[] = [
   { student_id: 'std-sec', student_name: 'Elena', avatar_outfit: 'purple', class_name: 'Mago', status: 'pending' }
 ];
 
+const ATTENDANCE_SEED: Attendance[] = [
+  {
+    id: 'att-1',
+    student_id: 'std-pa',
+    group_id: 'grp-pa-a',
+    subject_id: 'sub-math',
+    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // ayer
+    status: 'presente',
+    comments: 'Participó activamente',
+    registered_by: 'usr-teacher-1',
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  },
+  {
+    id: 'att-2',
+    student_id: 'std-sec',
+    group_id: 'grp-sec-a',
+    subject_id: 'sub-sci',
+    date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // ayer
+    status: 'retardo',
+    comments: 'Llegó 10 minutos tarde',
+    registered_by: 'usr-teacher-1',
+    created_at: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+  }
+];
+
+const PARENT_MESSAGES_SEED: ParentMessage[] = [
+  {
+    id: 'msg-1',
+    parent_id: 'usr-parent-1',
+    student_id: 'std-pa',
+    student_name: 'Lucas Skywalker',
+    teacher_id: 'usr-teacher-1',
+    teacher_name: 'Israel López',
+    subject_id: 'sub-math',
+    subject_name: 'Matemáticas',
+    quest_id: 'q-fractions-2',
+    quest_title: 'Fraccionando en Casa',
+    message: 'Estimado tutor de Lucas, le informamos que el alumno no ha entregado la tarea "Fraccionando en Casa" de la materia Matemáticas. Agradecemos su apoyo en casa para regularizar esta situación.',
+    sent_at: new Date(Date.now() - 48 * 60 * 60 * 1000).toISOString(),
+    is_read: false
+  }
+];
+
+
 export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Guardar qué estudiante está activo (por defecto Lucas)
   const [activeStudentId, setActiveStudentId] = useState<string>(() => {
@@ -896,6 +973,30 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return SCHEDULES_SEED;
   });
 
+  const [attendanceList, setAttendanceList] = useState<Attendance[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_attendance_list');
+      return saved ? JSON.parse(saved) : ATTENDANCE_SEED;
+    }
+    return ATTENDANCE_SEED;
+  });
+
+  const [parentMessages, setParentMessages] = useState<ParentMessage[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_parent_messages');
+      return saved ? JSON.parse(saved) : PARENT_MESSAGES_SEED;
+    }
+    return PARENT_MESSAGES_SEED;
+  });
+
+  const [missionsList, setMissionsList] = useState<Mission[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_missions_list');
+      return saved ? JSON.parse(saved) : MISSIONS_SEED;
+    }
+    return MISSIONS_SEED;
+  });
+
   // Obtener Perfil, Stats y Avatar actuales
   const currentStudent = STUDENTS_LIST_SEED.find(s => s.id === activeStudentId) || STUDENTS_LIST_SEED[1];
   const stats = allStats[activeStudentId] || STATS_MAP_SEED['std-pa'];
@@ -945,6 +1046,18 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem('iskool_schedules_list', JSON.stringify(schedulesList));
   }, [schedulesList]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_attendance_list', JSON.stringify(attendanceList));
+  }, [attendanceList]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_parent_messages', JSON.stringify(parentMessages));
+  }, [parentMessages]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_missions_list', JSON.stringify(missionsList));
+  }, [missionsList]);
 
   // Lógica RPG Combate Colaborativo
   const triggerGuildAttack = (damage: number) => {
@@ -1127,6 +1240,129 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  // Guardar asistencia de alumnos
+  const saveAttendanceList = (records: Omit<Attendance, 'id' | 'created_at' | 'registered_by'>[]) => {
+    const timestamp = new Date().toISOString();
+    const registered_by = TEACHER_SEED.id; // En esta simulación el docente activo siempre es Israel López
+
+    setAttendanceList(prev => {
+      // Filtrar registros previos con la misma fecha, grupo y materia para no duplicar
+      const cleanPrev = prev.filter(att => {
+        const isSameGroupAndSubjectAndDate = records.some(rec => 
+          rec.date === att.date && 
+          rec.group_id === att.group_id && 
+          rec.subject_id === att.subject_id &&
+          rec.student_id === att.student_id
+        );
+        return !isSameGroupAndSubjectAndDate;
+      });
+
+      // Crear los nuevos registros con ID y datos completos
+      const newRecords: Attendance[] = records.map((rec, idx) => ({
+        ...rec,
+        id: `att-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 4)}`,
+        registered_by,
+        created_at: timestamp
+      }));
+
+      return [...cleanPrev, ...newRecords];
+    });
+  };
+
+  // Enviar mensaje a padres de familia
+  const sendParentMessage = (msgData: Omit<ParentMessage, 'id' | 'sent_at' | 'is_read'>) => {
+    const newMsg: ParentMessage = {
+      ...msgData,
+      id: `msg-${Date.now()}`,
+      sent_at: new Date().toISOString(),
+      is_read: false
+    };
+    setParentMessages(prev => [newMsg, ...prev]);
+  };
+
+  // Crear o editar una tarea (Quest) vinculada a una materia
+  const saveQuest = (subjectId: string, questData: Omit<Quest, 'created_at'> & { id?: string }) => {
+    setMissionsList(prev => {
+      // Buscar si ya existe una misión para este subject_id
+      const existingMissionIndex = prev.findIndex(m => m.subject_id === subjectId);
+      
+      const newQuest: Quest = {
+        ...questData,
+        id: questData.id || `q-${Date.now()}`,
+        created_at: new Date().toISOString()
+      } as Quest;
+
+      if (existingMissionIndex !== -1) {
+        const mission = prev[existingMissionIndex];
+        const quests = mission.quests || [];
+        const existingQuestIndex = quests.findIndex(q => q.id === newQuest.id);
+
+        let updatedQuests;
+        if (existingQuestIndex !== -1) {
+          // Actualizar tarea existente
+          updatedQuests = quests.map((q, idx) => idx === existingQuestIndex ? newQuest : q);
+        } else {
+          // Agregar nueva tarea al final de la secuencia
+          updatedQuests = [...quests, { ...newQuest, sequence_order: quests.length + 1 }];
+        }
+
+        const updatedMission = {
+          ...mission,
+          quests: updatedQuests
+        };
+
+        return prev.map((m, idx) => idx === existingMissionIndex ? updatedMission : m);
+      } else {
+        // Si no existe la misión, creamos una misión contenedor genérica para esa materia
+        const subject = SUBJECTS_SEED.find(s => s.id === subjectId);
+        const subjectName = subject ? subject.name : 'Materia';
+        const newMission: Mission = {
+          id: `mis-${subjectId}-${Date.now()}`,
+          school_id: 'sch-1',
+          subject_id: subjectId,
+          level_grade_id: 'lg-4', // Por defecto 4º de Primaria en simulación
+          title: `Camino de Aprendizaje: ${subjectName}`,
+          description: `Misiones y retos de la asignatura de ${subjectName}`,
+          story_intro: `¡Bienvenido al mapa de aprendizaje de ${subjectName}! Supera los retos para obtener XP y medallas.`,
+          map_position_x: 50,
+          map_position_y: 50,
+          is_active: true,
+          created_at: new Date().toISOString(),
+          quests: [{ ...newQuest, sequence_order: 1 }]
+        };
+        return [...prev, newMission];
+      }
+    });
+  };
+
+  // Responder a un mensaje del maestro (por parte del padre)
+  const replyToParentMessage = (messageId: string, replyText: string) => {
+    setParentMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          parent_reply: replyText,
+          replied_at: new Date().toISOString(),
+          is_read: true // Se asume leído al responder
+        };
+      }
+      return msg;
+    }));
+  };
+
+  // Marcar mensaje como leído
+  const markMessageAsRead = (messageId: string) => {
+    setParentMessages(prev => prev.map(msg => {
+      if (msg.id === messageId) {
+        return {
+          ...msg,
+          is_read: true
+        };
+      }
+      return msg;
+    }));
+  };
+
   // Enviar Cuestionario (Kahoot Style)
   const submitQuiz = (questId: string, score: number, answers: any) => {
     let xpReward = 50;
@@ -1232,6 +1468,133 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return { xpEarned, coinsEarned, leveledUp, badgeEarned };
   };
 
+  const submitExam = (
+    questId: string,
+    score: number,
+    answers: any,
+    statBoost?: { strength?: number; intelligence?: number; defense?: number },
+    customLoot?: string
+  ) => {
+    let xpReward = 150;
+    let coinsReward = 20;
+    let subjectId = "sub-math";
+
+    const mission = missionsList.find(m => 
+      m.quests?.some(q => {
+        if (q.id === questId) {
+          xpReward = q.xp_reward;
+          coinsReward = q.coins_reward;
+          return true;
+        }
+        return false;
+      })
+    );
+
+    if (mission) {
+      subjectId = mission.subject_id;
+    }
+
+    const factor = score / 100;
+    const xpEarned = Math.round(xpReward * factor);
+    const coinsEarned = score === 100 ? coinsReward + 10 : Math.round(coinsReward * factor);
+
+    const newAttempt: QuestAttempt = {
+      id: `att-${Date.now()}`,
+      student_id: activeStudentId,
+      quest_id: questId,
+      score: score,
+      is_completed: score >= 60,
+      answers: answers,
+      feedback: score === 100 
+        ? '¡Increíble! Derrotaste al Jefe con un puntaje perfecto. ¡Eres una verdadera leyenda!' 
+        : score >= 60 
+          ? '¡Bien hecho! Superaste la prueba y salvaste el reino.'
+          : '¡Fuiste derrotado! Revisa tus respuestas y vuelve a desafiar al jefe.',
+      created_at: new Date().toISOString()
+    };
+
+    setQuestAttempts(prev => [newAttempt, ...prev]);
+
+    let currentXP = stats.xp + xpEarned;
+    let currentCoins = stats.coins + coinsEarned;
+    let level = stats.level;
+    let leveledUp = false;
+    let skillPoints = stats.skill_points || 0;
+
+    const xpRequiredForNextLevel = level * 200;
+    if (currentXP >= xpRequiredForNextLevel) {
+      currentXP -= xpRequiredForNextLevel;
+      level += 1;
+      leveledUp = true;
+      if (activeStudentId === 'std-sec') {
+        skillPoints += 2;
+      }
+    }
+
+    let finalStrength = stats.attribute_strength || 1;
+    let finalIntelligence = stats.attribute_intelligence || 1;
+    let finalDefense = stats.attribute_defense || 1;
+
+    if (score >= 60 && statBoost) {
+      if (statBoost.strength) finalStrength += statBoost.strength;
+      if (statBoost.intelligence) finalIntelligence += statBoost.intelligence;
+      if (statBoost.defense) finalDefense += statBoost.defense;
+    }
+
+    setAllStats(prev => ({
+      ...prev,
+      [activeStudentId]: {
+        ...prev[activeStudentId],
+        xp: currentXP,
+        level: level,
+        coins: currentCoins,
+        skill_points: skillPoints,
+        attribute_strength: finalStrength,
+        attribute_intelligence: finalIntelligence,
+        attribute_defense: finalDefense,
+        updated_at: new Date().toISOString()
+      }
+    }));
+
+    if (score >= 60 && customLoot) {
+      setAllAvatars(prev => {
+        const studentAvatar = prev[activeStudentId];
+        if (!studentAvatar) return prev;
+        const currentUnlocked = studentAvatar.unlocked_items || [];
+        const nextUnlocked = currentUnlocked.includes(customLoot) ? currentUnlocked : [...currentUnlocked, customLoot];
+        return {
+          ...prev,
+          [activeStudentId]: {
+            ...studentAvatar,
+            unlocked_items: nextUnlocked,
+            pet_hunger: 100,
+            pet_happiness: 100,
+            updated_at: new Date().toISOString()
+          }
+        };
+      });
+    }
+
+    let badgeEarned: Badge | null = null;
+    if (score === 100 && !studentBadges.some(sb => sb.badge_id === 'badge-perfect-exam' && sb.student_id === activeStudentId)) {
+      badgeEarned = {
+        id: 'badge-perfect-exam',
+        name: 'Vencedor del Caos 🏆',
+        description: 'Derrotó a un Jefe de Examen con puntaje perfecto.',
+        category: 'academic',
+        icon_name: 'award',
+        xp_required: 0,
+        created_at: new Date().toISOString()
+      };
+      setStudentBadges(prev => [
+        ...prev,
+        { student_id: activeStudentId, badge_id: 'badge-perfect-exam', earned_at: new Date().toISOString() }
+      ]);
+    }
+
+    return { xpEarned, coinsEarned, leveledUp, badgeEarned };
+  };
+
   // Enviar Portafolio (Seesaw Style)
   const submitPortfolioItem = (
     title: string,
@@ -1245,6 +1608,8 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     const defaultSubjectId = subjectId || 'sub-math';
     const finalSubject = SUBJECTS_SEED.find(s => s.id === defaultSubjectId) || SUBJECTS_SEED[0];
 
+    const quest = missionsList.flatMap(m => m.quests || []).find(q => q.id === questId);
+
     const newItem: PortfolioItem = {
       id: `port-${Date.now()}`,
       student_id: activeStudentId,
@@ -1256,6 +1621,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       file_type: fileType,
       status: 'submitted',
       self_reflection: selfReflection,
+      campos_formativos: quest?.campos_formativos,
+      ejes_articuladores: quest?.ejes_articuladores,
+      pdas: quest?.pdas,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       student_profile: currentStudent,
@@ -1299,6 +1667,85 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         { student_id: activeStudentId, badge_id: lectorBadge.id, earned_at: new Date().toISOString() }
       ]);
     }
+  };
+
+  const submitPortfolioItemOnBehalf = (
+    studentId: string,
+    title: string,
+    description: string,
+    fileUrl: string,
+    fileType: any,
+    selfReflection: string,
+    questId?: string,
+    subjectId?: string
+  ) => {
+    const defaultSubjectId = subjectId || 'sub-math';
+    const finalSubject = SUBJECTS_SEED.find(s => s.id === defaultSubjectId) || SUBJECTS_SEED[0];
+    const quest = missionsList.flatMap(m => m.quests || []).find(q => q.id === questId);
+
+    const sDetail = detailedStudents.find(ds => ds.id === studentId);
+    const targetStudentProfile: UserProfile = sDetail ? {
+      id: studentId,
+      first_name: sDetail.first_name,
+      last_name: `${sDetail.last_name_1} ${sDetail.last_name_2 || ''}`.trim(),
+      role: 'student',
+      email: sDetail.email || `${sDetail.first_name.toLowerCase()}@iskool.edu.mx`,
+      created_at: sDetail.birth_date,
+      updated_at: new Date().toISOString()
+    } : {
+      id: studentId,
+      first_name: 'Estudiante',
+      last_name: 'Simulado',
+      role: 'student',
+      email: 'student@iskool.edu.mx',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    const newItem: PortfolioItem = {
+      id: `port-${Date.now()}`,
+      student_id: studentId,
+      subject_id: defaultSubjectId,
+      quest_id: questId,
+      title: title,
+      description: description,
+      file_url: fileUrl,
+      file_type: fileType,
+      status: 'submitted',
+      self_reflection: selfReflection,
+      campos_formativos: quest?.campos_formativos,
+      ejes_articuladores: quest?.ejes_articuladores,
+      pdas: quest?.pdas,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      student_profile: targetStudentProfile,
+      subject: finalSubject,
+      feedbacks: []
+    };
+
+    setPortfolioItems(prev => [newItem, ...prev]);
+
+    setAllStats(prev => {
+      const s = prev[studentId];
+      if (!s) return prev;
+      let currentXP = s.xp + 50;
+      let level = s.level;
+      const xpRequired = level * 200;
+      if (currentXP >= xpRequired) {
+        currentXP -= xpRequired;
+        level += 1;
+      }
+      return {
+        ...prev,
+        [studentId]: {
+          ...s,
+          xp: currentXP,
+          level: level,
+          coins: s.coins + 10,
+          updated_at: new Date().toISOString()
+        }
+      };
+    });
   };
 
   // Feedback
@@ -1427,6 +1874,23 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     }
   };
 
+  const linkPortfolioItemToQuest = (itemId: string, questId: string) => {
+    const quest = missionsList.flatMap(m => m.quests || []).find(q => q.id === questId);
+    setPortfolioItems(prev => prev.map(item => {
+      if (item.id === itemId) {
+        return {
+          ...item,
+          quest_id: questId,
+          campos_formativos: quest?.campos_formativos || item.campos_formativos,
+          ejes_articuladores: quest?.ejes_articuladores || item.ejes_articuladores,
+          pdas: quest?.pdas || item.pdas,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return item;
+    }));
+  };
+
   // Métodos del Coordinador
   const registerStudent = (studentData: Omit<DetailedStudent, 'id'>) => {
     const newId = `std-${Date.now()}`;
@@ -1525,6 +1989,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.removeItem('iskool_detailed_students');
     localStorage.removeItem('iskool_groups_list');
     localStorage.removeItem('iskool_schedules_list');
+    localStorage.removeItem('iskool_attendance_list');
+    localStorage.removeItem('iskool_parent_messages');
+    localStorage.removeItem('iskool_missions_list');
 
     // 2. Escribir las semillas directamente en localStorage de forma síncrona
     localStorage.setItem('iskool_all_stats', JSON.stringify(STATS_MAP_SEED));
@@ -1533,6 +2000,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.setItem('iskool_detailed_students', JSON.stringify(DETAILED_STUDENTS_SEED));
     localStorage.setItem('iskool_groups_list', JSON.stringify(GROUPS_SEED));
     localStorage.setItem('iskool_schedules_list', JSON.stringify(SCHEDULES_SEED));
+    localStorage.setItem('iskool_attendance_list', JSON.stringify(ATTENDANCE_SEED));
+    localStorage.setItem('iskool_parent_messages', JSON.stringify(PARENT_MESSAGES_SEED));
+    localStorage.setItem('iskool_missions_list', JSON.stringify(MISSIONS_SEED));
     localStorage.setItem('iskool_student_badges', JSON.stringify([
       { student_id: 'std-pa', badge_id: 'badge-1', earned_at: new Date().toISOString() },
       { student_id: 'std-sec', badge_id: 'badge-3', earned_at: new Date().toISOString() }
@@ -1557,6 +2027,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setDetailedStudents(DETAILED_STUDENTS_SEED);
     setGroupsList(GROUPS_SEED);
     setSchedulesList(SCHEDULES_SEED);
+    setAttendanceList(ATTENDANCE_SEED);
+    setParentMessages(PARENT_MESSAGES_SEED);
+    setMissionsList(MISSIONS_SEED);
     setSchoolSettings({
       isConfigured: false,
       name: 'Colegio Anglo Mexicano',
@@ -1584,7 +2057,7 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
         ...sb,
         badge: BADGES_SEED.find(b => b.id === sb.badge_id)
       })),
-      missions: MISSIONS_SEED,
+      missions: missionsList,
       portfolioItems: portfolioItems.filter(item => {
         // En vista de estudiante ve solo los suyos, en vista de profesor ve todos
         return item;
@@ -1594,6 +2067,13 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
       schoolSettings,
       saveSchoolSettings,
+
+      attendanceList,
+      parentMessages,
+      saveAttendanceList,
+      sendParentMessage,
+      replyToParentMessage,
+      markMessageAsRead,
       
       detailedStudents,
       setDetailedStudents,
@@ -1626,13 +2106,17 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       resetGuildBoss,
       submitGuildHomework,
       
+      saveQuest,
       switchStudent,
       changeAvatar,
       submitQuiz,
+      submitExam,
       submitPortfolioItem,
+      submitPortfolioItemOnBehalf,
       addPortfolioFeedback,
       addReaction,
       reviewPortfolioItem,
+      linkPortfolioItemToQuest,
       
       // Acciones específicas
       feedPet,
