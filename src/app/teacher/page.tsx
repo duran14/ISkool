@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { FormattedDate } from '@/components/FormattedDate';
 import { DetailedStudent, AttendanceStatus, Attendance, ParentMessage, Quest, QuizQuestion } from '@/types';
+import { PlanningTab } from './PlanningTab';
 
 // Catálogo de PDAs por asignatura
 const PDA_CATALOG: Record<string, string[]> = {
@@ -93,7 +94,7 @@ export default function TeacherDashboard() {
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
 
   // Navegación principal del portal del profesor
-  const [currentMenuTab, setCurrentMenuTab] = useState<'evaluation' | 'attendance' | 'tasks' | 'design'>('evaluation');
+  const [currentMenuTab, setCurrentMenuTab] = useState<'evaluation' | 'attendance' | 'tasks' | 'design' | 'planning'>('evaluation');
 
   // Estados para Asistencia
   const [selectedAttendanceGroup, setSelectedAttendanceGroup] = useState<string>('');
@@ -500,12 +501,14 @@ export default function TeacherDashboard() {
             <span className="text-xs font-bold text-blue-600 dark:text-blue-400 uppercase tracking-widest bg-blue-50 dark:bg-blue-950/50 px-2.5 py-1 rounded-md">
               {currentMenuTab === 'evaluation' ? 'Módulo de Evaluación Formativa' : 
                currentMenuTab === 'attendance' ? 'Módulo de Asistencia Diaria' : 
-               currentMenuTab === 'design' ? 'Módulo de Planificación y Diseño' : 'Módulo de Avisos y Tareas'}
+               currentMenuTab === 'design' ? 'Módulo de Planificación y Diseño' : 
+               currentMenuTab === 'planning' ? 'Planeación Didáctica NEM' : 'Módulo de Avisos y Tareas'}
             </span>
             <h1 className="text-2xl font-black text-zinc-950 dark:text-white mt-2">
               {currentMenuTab === 'evaluation' ? 'Alineación Estructural NEM' :
                currentMenuTab === 'attendance' ? 'Control de Asistencia de Grupos' :
-               currentMenuTab === 'design' ? 'Diseño y Planeación de Tareas NEM' : 'Seguimiento de Tareas y Alertas a Padres'}
+               currentMenuTab === 'design' ? 'Diseño y Planeación de Tareas NEM' :
+               currentMenuTab === 'planning' ? 'Generador de Planeación con IA' : 'Seguimiento de Tareas y Alertas a Padres'}
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
               Docente: <strong>{currentTeacher.first_name} {currentTeacher.last_name}</strong> | Colegio Anglo Mexicano
@@ -533,6 +536,16 @@ export default function TeacherDashboard() {
               }`}
             >
               Diseño de Tareas
+            </button>
+            <button
+              onClick={() => setCurrentMenuTab('planning')}
+              className={`flex-1 xl:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
+                currentMenuTab === 'planning'
+                  ? 'bg-white dark:bg-zinc-800 text-blue-600 dark:text-blue-400 shadow-sm'
+                  : 'text-zinc-500 hover:text-zinc-900 dark:text-zinc-400'
+              }`}
+            >
+              Planeación
             </button>
             <button
               onClick={() => setCurrentMenuTab('attendance')}
@@ -2683,6 +2696,14 @@ export default function TeacherDashboard() {
 
             </div>
           </div>
+        )}
+        {currentMenuTab === 'planning' && (
+          <PlanningTab
+            currentTeacher={currentTeacher}
+            subjects={subjects}
+            schedulesList={schedulesList}
+            groupsList={groupsList}
+          />
         )}
       </main>
 
