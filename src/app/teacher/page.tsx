@@ -17,6 +17,7 @@ import {
 import { FormattedDate } from '@/components/FormattedDate';
 import { DetailedStudent, AttendanceStatus, Attendance, ParentMessage, Quest, QuizQuestion } from '@/types';
 import { PlanningTab } from './PlanningTab';
+import { EmergencyModal } from './EmergencyModal';
 
 // Catálogo de PDAs por asignatura
 const PDA_CATALOG: Record<string, string[]> = {
@@ -92,6 +93,9 @@ export default function TeacherDashboard() {
 
   // Expediente escolar detallado
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
+
+  // Estado para el modal de emergencia (SOS)
+  const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
 
   // Navegación principal del portal del profesor
   const [currentMenuTab, setCurrentMenuTab] = useState<'evaluation' | 'attendance' | 'tasks' | 'design' | 'planning'>('evaluation');
@@ -515,8 +519,18 @@ export default function TeacherDashboard() {
             </p>
           </div>
 
-          {/* Menú Principal del Docente */}
-          <div className="flex flex-wrap gap-1 bg-zinc-150 dark:bg-zinc-955 p-1 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 w-full xl:w-auto">
+          {/* Menú Principal del Docente y SOS */}
+          <div className="flex flex-col sm:flex-row items-center gap-3 w-full xl:w-auto">
+            {/* Botón SOS Emergencias */}
+            <button
+              onClick={() => setIsEmergencyModalOpen(true)}
+              className="w-full sm:w-auto px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-black shadow-md shadow-rose-500/25 flex items-center justify-center gap-1.5 transition-all animate-pulse hover:scale-102 cursor-pointer no-print"
+            >
+              <AlertTriangle className="h-4 w-4" />
+              SOS Emergencia 🚨
+            </button>
+
+            <div className="flex flex-wrap gap-1 bg-zinc-150 dark:bg-zinc-955 p-1 rounded-2xl border border-zinc-200/40 dark:border-zinc-800/40 w-full xl:w-auto">
             <button
               onClick={() => setCurrentMenuTab('evaluation')}
               className={`flex-1 xl:flex-initial px-4 py-2.5 rounded-xl text-xs font-black transition-all ${
@@ -567,6 +581,7 @@ export default function TeacherDashboard() {
             >
               Seguimiento de Tareas
             </button>
+          </div>
           </div>
         </div>
 
@@ -3240,6 +3255,13 @@ export default function TeacherDashboard() {
           </div>
         </div>
       )}
+
+      <EmergencyModal
+        isOpen={isEmergencyModalOpen}
+        onClose={() => setIsEmergencyModalOpen(false)}
+        currentTeacher={currentTeacher}
+        detailedStudents={detailedStudents}
+      />
 
     </div>
   );
