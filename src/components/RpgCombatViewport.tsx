@@ -3,10 +3,22 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGamification } from '@/context/gamification-context';
 import { Volume2, VolumeX, Shield, Swords, Sparkles, HelpCircle, Briefcase, Zap, RotateCcw } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-// Motor de Audio Retro sintetizado
+// Importar dinámicamente el canvas de PixiJS desactivando SSR para evitar errores del objeto window
+const PixiCombatCanvas = dynamic(
+  () => import('./PixiCombatCanvas'),
+  { ssr: false }
+);
+
+// Motor de Audio Avanzado sintetizado con Música de Fondo Retro y Control de Volumen Master
 class RetroSoundEngine {
   private ctx: AudioContext | null = null;
+  private noiseBuffer: AudioBuffer | null = null;
+  private bgMusicInterval: any = null;
+  private isMusicPlaying = false;
+  private masterGain: GainNode | null = null;
+  private volumeLevel = 0.5; // Por defecto al 50%
 
   private init() {
     if (this.ctx) return;
@@ -14,13 +26,115 @@ class RetroSoundEngine {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
         this.ctx = new AudioCtx();
+        
+        // Crear Nodo de Ganancia Master
+        this.masterGain = this.ctx.createGain();
+        this.masterGain.gain.setValueAtTime(this.volumeLevel, this.ctx.currentTime);
+        this.masterGain.connect(this.ctx.destination);
+        
+        // Generar buffer de ruido para explosiones digitales
+        const bufferSize = this.ctx.sampleRate * 0.45;
+        this.noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = this.noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          data[i] = Math.random() * 2 - 1;
+        }
       }
     } catch (e) {
       console.warn("Web Audio API no está soportado en este navegador.", e);
     }
   }
 
-  public play(type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup') {
+  public setVolume(volume: number) {
+    this.volumeLevel = volume;
+    this.init(); // Asegurar inicialización
+    if (this.masterGain && this.ctx) {
+      this.masterGain.gain.setValueAtTime(volume, this.ctx.currentTime);
+    }
+  }
+
+  public startBackgroundMusic() {
+    this.init();
+    if (!this.ctx || this.isMusicPlaying) return;
+
+    if (this.ctx.state === 'suspended') {
+      this.ctx.resume();
+    }
+
+    this.isMusicPlaying = true;
+    let step = 0;
+    
+    // Secuenciador retro simple (Cyberpunk chiptune loop)
+    const bassline = [73.42, 73.42, 87.31, 98.00, 73.42, 73.42, 110.00, 98.00]; // D2, D2, F2, G2, D2, D2, A2, G2
+    const melody = [293.66, 0, 349.23, 392.00, 293.66, 440.00, 392.00, 0]; // D4, F4, G4, A4
+    
+    this.bgMusicInterval = setInterval(() => {
+      if (!this.ctx || this.ctx.state === 'suspended') return;
+      const now = this.ctx.currentTime;
+      
+      // Nota de Bajo (Sintetizador analógico de onda sierra con filtro de paso bajo)
+      const bassOsc = this.ctx.createOscillator();
+      const bassGain = this.ctx.createGain();
+      const bassFilter = this.ctx.createBiquadFilter();
+      
+      bassOsc.type = 'sawtooth';
+      bassOsc.frequency.value = bassline[step % bassline.length];
+      
+      bassFilter.type = 'lowpass';
+      bassFilter.frequency.setValueAtTime(350, now);
+      
+      bassGain.gain.setValueAtTime(0.05, now);
+      bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+      
+      bassOsc.connect(bassFilter);
+      bassFilter.connect(bassGain);
+      bassGain.connect(this.masterGain || this.ctx.destination);
+      
+      bassOsc.start(now);
+      bassOsc.stop(now + 0.24);
+      
+      // Melodía principal
+      const melFreq = melody[step % melody.length];
+      if (melFreq > 0 && step % 2 === 0) {
+        const melOsc = this.ctx.createOscillator();
+        const melGain = this.ctx.createGain();
+        const melDelay = this.ctx.createDelay();
+        const delayGain = this.ctx.createGain();
+
+        melOsc.type = 'square';
+        melOsc.frequency.value = melFreq;
+        
+        melGain.gain.setValueAtTime(0.015, now);
+        melGain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        
+        melDelay.delayTime.value = 0.15;
+        delayGain.gain.value = 0.4; // Feedback
+        
+        melOsc.connect(melGain);
+        melGain.connect(this.masterGain || this.ctx.destination);
+        
+        // Efecto delay retro
+        melGain.connect(melDelay);
+        melDelay.connect(delayGain);
+        delayGain.connect(this.masterGain || this.ctx.destination);
+        
+        melOsc.start(now);
+        melOsc.stop(now + 0.45);
+      }
+      
+      step++;
+    }, 240); // BPM ~125
+  }
+
+  public stopBackgroundMusic() {
+    if (this.bgMusicInterval) {
+      clearInterval(this.bgMusicInterval);
+      this.bgMusicInterval = null;
+    }
+    this.isMusicPlaying = false;
+  }
+
+  public play(type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup' | 'charge') {
     this.init();
     if (!this.ctx) return;
     
@@ -31,113 +145,184 @@ class RetroSoundEngine {
     const now = this.ctx.currentTime;
 
     switch (type) {
-      case 'laser': {
-        const osc = this.ctx.createOscillator();
-        const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(880, now);
-        osc.frequency.exponentialRampToValueAtTime(110, now + 0.15);
-        
-        gain.gain.setValueAtTime(0.15, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.15);
-        
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        
-        osc.start(now);
-        osc.stop(now + 0.16);
-        break;
-      }
-      case 'hit': {
+      case 'charge': {
+        // Carga de energía láser
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
         osc.type = 'triangle';
-        osc.frequency.setValueAtTime(150, now);
-        osc.frequency.linearRampToValueAtTime(30, now + 0.12);
+        osc.frequency.setValueAtTime(100, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.6);
         
-        gain.gain.setValueAtTime(0.3, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12);
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.exponentialRampToValueAtTime(0.15, now + 0.6);
         
         osc.connect(gain);
-        gain.connect(this.ctx.destination);
-        
+        gain.connect(this.masterGain || this.ctx.destination);
         osc.start(now);
-        osc.stop(now + 0.13);
+        osc.stop(now + 0.6);
+        break;
+      }
+      case 'laser': {
+        // Disparo láser de 16-bits con doble oscilador y barrido resonante
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        const filter = this.ctx.createBiquadFilter();
+
+        osc1.type = 'sawtooth';
+        osc2.type = 'square';
+        
+        osc1.frequency.setValueAtTime(950, now);
+        osc1.frequency.exponentialRampToValueAtTime(180, now + 0.4);
+        osc2.frequency.setValueAtTime(930, now);
+        osc2.frequency.exponentialRampToValueAtTime(170, now + 0.4);
+
+        filter.type = 'lowpass';
+        filter.Q.value = 6;
+        filter.frequency.setValueAtTime(2800, now);
+        filter.frequency.exponentialRampToValueAtTime(350, now + 0.4);
+
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+
+        osc1.connect(filter);
+        osc2.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.masterGain || this.ctx.destination);
+
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.41);
+        osc2.stop(now + 0.41);
+        break;
+      }
+      case 'hit': {
+        // Glitch explosion: sub-drop de bajos y ruido blanco bandpass
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(30, now + 0.45);
+        
+        oscGain.gain.setValueAtTime(0.38, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        
+        osc.connect(oscGain);
+        oscGain.connect(this.masterGain || this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.46);
+
+        if (this.noiseBuffer) {
+          const noiseSource = this.ctx.createBufferSource();
+          const noiseGain = this.ctx.createGain();
+          const noiseFilter = this.ctx.createBiquadFilter();
+
+          noiseSource.buffer = this.noiseBuffer;
+          
+          noiseFilter.type = 'bandpass';
+          noiseFilter.Q.value = 4.5;
+          noiseFilter.frequency.setValueAtTime(1300, now);
+          noiseFilter.frequency.exponentialRampToValueAtTime(120, now + 0.38);
+
+          noiseGain.gain.setValueAtTime(0.32, now);
+          noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+
+          noiseSource.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(this.masterGain || this.ctx.destination);
+
+          noiseSource.start(now);
+          noiseSource.stop(now + 0.39);
+        }
         break;
       }
       case 'victory': {
-        // Melodía victoriosa de 8 bits
-        const notes = [261.63, 329.63, 392.00, 523.25]; // C4, E4, G4, C5
-        const durations = [0.08, 0.08, 0.08, 0.4];
+        // Melodía gloriosa arpegiada
+        const chords = [
+          [261.63, 329.63, 392.00], // Do mayor (C)
+          [349.23, 440.00, 523.25], // Fa mayor (F)
+          [392.00, 493.88, 587.33], // Sol mayor (G)
+          [523.25, 659.25, 783.99, 1046.50] // C5 + C6
+        ];
+        const durations = [0.14, 0.14, 0.14, 0.65];
         let time = now;
         
-        notes.forEach((freq, idx) => {
-          if (!this.ctx) return;
-          const osc = this.ctx.createOscillator();
-          const gain = this.ctx.createGain();
-          
-          osc.type = 'square';
-          osc.frequency.setValueAtTime(freq, time);
-          
-          gain.gain.setValueAtTime(0.12, time);
-          gain.gain.exponentialRampToValueAtTime(0.01, time + durations[idx] - 0.01);
-          
-          osc.connect(gain);
-          gain.connect(this.ctx.destination);
-          
-          osc.start(time);
-          osc.stop(time + durations[idx]);
-          
-          time += durations[idx];
+        chords.forEach((freqs, idx) => {
+          freqs.forEach((freq) => {
+            if (!this.ctx) return;
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            
+            osc.type = idx === 3 ? 'sine' : 'square';
+            osc.frequency.setValueAtTime(freq, time);
+            
+            gain.gain.setValueAtTime(0.08, time);
+            gain.gain.exponentialRampToValueAtTime(0.001, time + durations[idx] - 0.02);
+            
+            osc.connect(gain);
+            gain.connect(this.masterGain || this.ctx.destination);
+            
+            osc.start(time);
+            osc.stop(time + durations[idx]);
+          });
+          time += durations[idx] * 0.9;
         });
         break;
       }
       case 'defeat': {
-        const notes = [196.00, 164.81, 130.81]; // G3, E3, C3
-        const durations = [0.15, 0.15, 0.45];
+        const notes = [196.00, 164.81, 130.81, 98.00];
+        const durations = [0.18, 0.18, 0.18, 0.5];
         let time = now;
-        
         notes.forEach((freq, idx) => {
           if (!this.ctx) return;
           const osc = this.ctx.createOscillator();
           const gain = this.ctx.createGain();
           
-          osc.type = 'triangle';
+          osc.type = 'sawtooth';
           osc.frequency.setValueAtTime(freq, time);
           
           gain.gain.setValueAtTime(0.18, time);
-          gain.gain.exponentialRampToValueAtTime(0.01, time + durations[idx] - 0.02);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + durations[idx] - 0.02);
           
           osc.connect(gain);
-          gain.connect(this.ctx.destination);
+          gain.connect(this.masterGain || this.ctx.destination);
           
           osc.start(time);
           osc.stop(time + durations[idx]);
-          
-          time += durations[idx];
+          time += durations[idx] * 0.95;
         });
         break;
       }
       case 'error': {
-        const osc = this.ctx.createOscillator();
+        const osc1 = this.ctx.createOscillator();
+        const osc2 = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
-        osc.type = 'sawtooth';
-        osc.frequency.setValueAtTime(130, now);
-        osc.frequency.linearRampToValueAtTime(110, now + 0.25);
         
+        osc1.type = 'sawtooth';
+        osc1.frequency.setValueAtTime(140, now);
+        osc1.frequency.linearRampToValueAtTime(120, now + 0.35);
+        
+        osc2.type = 'sawtooth';
+        osc2.frequency.setValueAtTime(143, now);
+        osc2.frequency.linearRampToValueAtTime(123, now + 0.35);
+
         gain.gain.setValueAtTime(0.2, now);
-        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.25);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
         
-        osc.connect(gain);
-        gain.connect(this.ctx.destination);
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(this.masterGain || this.ctx.destination);
         
-        osc.start(now);
-        osc.stop(now + 0.26);
+        osc1.start(now);
+        osc2.start(now);
+        osc1.stop(now + 0.36);
+        osc2.stop(now + 0.36);
         break;
       }
       case 'powerup': {
-        const notes = [523.25, 659.25, 783.99]; // C5, E5, G5
-        const durations = [0.08, 0.08, 0.2];
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        const durations = [0.08, 0.08, 0.08, 0.3];
         let time = now;
         notes.forEach((freq, idx) => {
           if (!this.ctx) return;
@@ -145,13 +330,13 @@ class RetroSoundEngine {
           const gain = this.ctx.createGain();
           osc.type = 'sine';
           osc.frequency.setValueAtTime(freq, time);
-          gain.gain.setValueAtTime(0.12, time);
-          gain.gain.exponentialRampToValueAtTime(0.01, time + durations[idx] - 0.01);
+          gain.gain.setValueAtTime(0.14, time);
+          gain.gain.exponentialRampToValueAtTime(0.001, time + durations[idx] - 0.01);
           osc.connect(gain);
-          gain.connect(this.ctx.destination);
+          gain.connect(this.masterGain || this.ctx.destination);
           osc.start(time);
           osc.stop(time + durations[idx]);
-          time += durations[idx];
+          time += durations[idx] * 0.7;
         });
         break;
       }
@@ -168,13 +353,15 @@ export function RpgCombatViewport() {
     triggerGuildAttack, 
     submitGuildHomework, 
     resetGuildBoss,
-    stats,
-    currentStudent
+    stats
   } = useGamification();
 
   const elenaSub = guildSubmissions.find(s => s.student_id === 'std-sec');
 
-  const [audioEnabled, setAudioEnabled] = useState(true);
+  // Control de Volumen local
+  const [volume, setVolume] = useState(0.5); // 50% por defecto
+  const [prevVolume, setPrevVolume] = useState(0.5); // Recordar volumen previo para desmutear
+
   const [combatState, setCombatState] = useState<'idle' | 'attacking' | 'boss_hurt' | 'victory' | 'defeat'>('idle');
   const [sombraText, setSombraText] = useState('Sombra: ¡El Guardián de Historia custodia el portal! Registren sus evidencias a tiempo para iniciar el ataque sincronizado.');
   
@@ -182,36 +369,67 @@ export function RpgCombatViewport() {
   const [damageNumber, setDamageNumber] = useState<number | null>(null);
   const [xpNumber, setXpNumber] = useState<number | null>(null);
 
-  // Salud del equipo (simulada basada en el contexto)
+  // Salud del equipo
   const [partyHp, setPartyHp] = useState(75);
 
   const prevBossHp = useRef(guildBoss.hp_actual);
 
-  // Reproducir efectos de sonido si el audio está habilitado
-  const playSound = (type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup') => {
-    if (audioEnabled) {
+  // Controlar ciclo de vida de la música de fondo y aplicar el volumen en tiempo real
+  useEffect(() => {
+    soundEngine.setVolume(volume);
+    if (volume > 0 && combatState !== 'victory') {
+      soundEngine.startBackgroundMusic();
+    } else {
+      soundEngine.stopBackgroundMusic();
+    }
+    return () => {
+      soundEngine.stopBackgroundMusic();
+    };
+  }, [volume, combatState]);
+
+  // Reproducir efectos de sonido si el volumen no es 0
+  const playSound = (type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup' | 'charge') => {
+    if (volume > 0) {
       soundEngine.play(type);
     }
   };
 
-  // Observar cambios en el HP del jefe para disparar animaciones secundarias si es necesario
+  // Silenciar / Activar Audio (Mute / Unmute)
+  const handleToggleMute = () => {
+    if (volume > 0) {
+      setPrevVolume(volume);
+      setVolume(0);
+    } else {
+      setVolume(prevVolume > 0 ? prevVolume : 0.5);
+    }
+  };
+
+  // Manejar el cambio del slider de volumen
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const newVol = parseFloat(e.target.value);
+    setVolume(newVol);
+    if (newVol > 0) {
+      setPrevVolume(newVol);
+    }
+  };
+
+  // Observar cambios en el HP del jefe
   useEffect(() => {
     if (guildBoss.hp_actual === 0 && combatState !== 'victory') {
       setCombatState('victory');
+      soundEngine.stopBackgroundMusic();
       playSound('victory');
       setSombraText('Sombra: ¡Felicidades, Héroes! Han derrotado al Guardián de Historia. El portal de conocimiento está abierto. (+500 XP Gremial)');
     } else if (guildBoss.hp_actual > 0 && guildBoss.hp_actual < prevBossHp.current) {
-      // Si el HP bajó y no estamos en animación, resetear
       prevBossHp.current = guildBoss.hp_actual;
     }
   }, [guildBoss.hp_actual]);
 
-  // Ejecutar el ataque sincronizado
+  // Ejecutar el ataque sincronizado (Triple Ataque)
   const handleSincronizadoAttack = () => {
     if (guildBoss.hp_actual <= 0) return;
     
     // Verificar si Elena ya entregó
-    const elenaSub = guildSubmissions.find(s => s.student_id === 'std-sec');
     if (!elenaSub || elenaSub.status === 'pending') {
       playSound('error');
       setSombraText('Sombra: ¡Alto! Elena la Mago aún no ha entregado su evidencia. Completa la misión abajo para activar la sincronía del gremio.');
@@ -220,12 +438,16 @@ export function RpgCombatViewport() {
 
     // Iniciar secuencia de animación
     setCombatState('attacking');
-    playSound('laser');
-    setSombraText('Sombra: ¡Excelente! Su sincronía activó un Ataque Triple. ¡El guardián no pudo resistir!');
+    playSound('charge'); // Sonido de carga de energía láser
+    setSombraText('Sombra: ¡Increíble! Su sincronía activó un Ataque Triple. ¡El guardián no pudo resistir!');
+
+    setTimeout(() => {
+      playSound('laser'); // Sonido de disparo masivo láser
+    }, 200);
 
     setTimeout(() => {
       setCombatState('boss_hurt');
-      playSound('hit');
+      playSound('hit'); // Sonido de impacto glitch
       
       const dmg = 50;
       setDamageNumber(dmg);
@@ -249,7 +471,7 @@ export function RpgCombatViewport() {
     setSombraText('Sombra: ¡Elena subió su evidencia a tiempo! Ahora el gremio está en sincronía total. ¡Preparen el Ataque Triple!');
   };
 
-  // Simular fallo / entrega tardía para ver el contraataque
+  // Simular fallo / entrega tardía
   const handleSimularFallo = () => {
     submitGuildHomework('std-sec', false);
     playSound('error');
@@ -272,73 +494,121 @@ export function RpgCombatViewport() {
 
   return (
     <div className="flex flex-col gap-6">
-      {/* Marco de Dispositivo Móvil / Celular Horizontal */}
-      <div className="relative w-full max-w-4xl mx-auto rounded-[36px] bg-zinc-950 border-[12px] border-zinc-800 shadow-2xl overflow-hidden aspect-[16/9] flex flex-col justify-between p-4 md:p-6 text-white font-sans select-none select-none">
-        {/* Notch / Cámara del Teléfono */}
-        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-4 h-16 bg-zinc-800 rounded-r-xl z-50 flex flex-col justify-center items-center gap-1">
-          <div className="w-1.5 h-1.5 rounded-full bg-zinc-900" />
-          <div className="w-1 h-8 rounded-full bg-zinc-900" />
+      {/* Estilos Inline CSS para efectos visuales Premium */}
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes float-up-fade {
+          0% { transform: translateY(0) scale(0.85); opacity: 0; }
+          15% { transform: translateY(-20px) scale(1.15); opacity: 1; }
+          85% { transform: translateY(-55px) scale(1); opacity: 1; }
+          100% { transform: translateY(-75px) scale(0.9); opacity: 0; }
+        }
+        .anim-float-up { animation: float-up-fade 1.2s cubic-bezier(0.25, 1, 0.5, 1) forwards; }
+        .clip-diagonal {
+          clip-path: polygon(0 0, 85% 0, 100% 100%, 0% 100%);
+        }
+      `}} />
+
+      {/* Contenedor del Celular de la Presentación */}
+      <div className="relative w-full max-w-4xl mx-auto rounded-[46px] bg-zinc-950 border-[14px] border-slate-800 shadow-2xl overflow-hidden aspect-[16/9] flex flex-col justify-between p-3 pb-2 text-white font-sans select-none border-t-[14px] border-b-[14px]">
+        
+        {/* Notch / Cámara en el lateral izquierdo */}
+        <div className="absolute top-1/2 left-0 -translate-y-1/2 w-4 h-20 bg-slate-800 rounded-r-2xl z-50 flex flex-col justify-center items-center gap-1.5 shadow-inner">
+          <div className="w-2 h-2 rounded-full bg-zinc-900 border border-zinc-700" />
+          <div className="w-1.5 h-6 rounded-full bg-zinc-900 border border-zinc-700" />
+        </div>
+
+        {/* Flares de alerta rojos en los bordes laterales */}
+        <div className="absolute left-0 top-0 bottom-0 w-28 bg-gradient-to-r from-red-600/35 via-red-600/5 to-transparent pointer-events-none z-10 mix-blend-screen animate-pulse" style={{animationDuration: '2s'}} />
+        <div className="absolute right-0 top-0 bottom-0 w-28 bg-gradient-to-l from-red-600/35 via-red-600/5 to-transparent pointer-events-none z-10 mix-blend-screen animate-pulse" style={{animationDuration: '2s'}} />
+
+        {/* Título de la app en el centro superior */}
+        <div className="absolute top-1.5 left-1/2 -translate-x-1/2 z-20 text-[12px] tracking-[6px] font-black uppercase text-cyan-400 font-mono drop-shadow-[0_0_8px_rgba(6,182,212,0.6)]">
+          ISKOOL
         </div>
         
         {/* Top UI Bar (Stats y Barras HP) */}
-        <div className="flex justify-between items-start w-full px-4 z-20">
+        <div className="flex justify-between items-start w-full px-4 z-20 mt-1 h-[15%]">
           {/* Jugador Stats */}
-          <div className="flex items-center gap-2 bg-black/45 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-zinc-800 shadow-lg">
-            <div className="h-8 w-8 rounded-xl bg-purple-600 border border-purple-500 flex items-center justify-center font-bold text-xs shadow-inner">
-              🧙‍♀️
+          <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-cyan-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.5)]">
+            <div className="h-8 w-8 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-xs relative overflow-hidden shadow-inner">
+              <svg viewBox="0 0 100 100" className="w-full h-full p-0.5">
+                <circle cx="50" cy="50" r="45" fill="#151d30" />
+                <path d="M 20 80 C 20 50, 80 50, 80 80 Z" fill="#475569" stroke="#64748B" strokeWidth="2" />
+                <circle cx="50" cy="45" r="24" fill="#38BDF8" opacity="0.8" filter="url(#glow-fx)" />
+                <path d="M30 45 Q 50 35 70 45" stroke="#FFFFFF" strokeWidth="2.5" fill="none" strokeLinecap="round" opacity="0.8" />
+                <rect x="25" y="70" width="50" height="12" fill="#1E293B" rx="2" />
+              </svg>
             </div>
             <div>
               <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black uppercase text-zinc-300">Cyber_Mecha</span>
-                <span className="text-[9px] text-zinc-500 font-semibold">({stats.rpg_class || 'mago'})</span>
+                <span className="text-[10px] font-extrabold uppercase text-slate-100 tracking-wider">Cyber_Mecha</span>
+                <span className="text-[8px] text-cyan-400/85 font-mono">image_0.png</span>
               </div>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <span className="text-[9px] font-black text-purple-400">HP</span>
-                <div className="w-24 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+                <span className="text-[9px] font-black text-emerald-400 tracking-wider">HP</span>
+                <div className="w-28 h-2 bg-zinc-950 rounded-full overflow-hidden border border-slate-800 shadow-inner">
                   <div 
-                    className="h-full bg-gradient-to-r from-emerald-500 to-cyan-500 transition-all duration-500" 
+                    className="h-full bg-gradient-to-r from-emerald-500 to-cyan-400 transition-all duration-500 shadow-[0_0_6px_#10B981]" 
                     style={{ width: `${partyHp}%` }}
                   />
                 </div>
-                <span className="text-[9px] font-bold text-zinc-400">{partyHp}%</span>
+                <span className="text-[9px] font-black text-emerald-400 font-mono">{partyHp}%</span>
               </div>
             </div>
           </div>
 
-          {/* Audio y Reset en la esquina superior */}
-          <div className="flex gap-2">
+          {/* Regulador de Volumen y Reset */}
+          <div className="flex gap-2 bg-slate-900/85 backdrop-blur-md px-2.5 py-1 rounded-2xl border border-slate-800/40 shadow-lg items-center">
             <button 
-              onClick={() => setAudioEnabled(!audioEnabled)}
-              className="p-2 rounded-xl bg-black/40 border border-zinc-800 hover:bg-black/60 transition-all"
-              title={audioEnabled ? "Silenciar audio" : "Activar audio"}
+              onClick={handleToggleMute}
+              className="p-1 rounded-lg bg-zinc-950 border border-slate-800 hover:bg-slate-800 transition-all"
+              title={volume === 0 ? "Activar audio" : "Silenciar"}
             >
-              {audioEnabled ? <Volume2 className="h-4 w-4 text-emerald-400" /> : <VolumeX className="h-4 w-4 text-zinc-500" />}
+              {volume === 0 ? <VolumeX className="h-3.5 w-3.5 text-rose-500" /> : <Volume2 className="h-3.5 w-3.5 text-emerald-400" />}
             </button>
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.05" 
+              value={volume} 
+              onChange={handleVolumeChange}
+              className="w-14 md:w-20 h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-cyan-400 focus:outline-none"
+              title="Regular volumen master"
+            />
+            <span className="text-[9px] font-bold text-cyan-400/85 font-mono w-6 text-right">
+              {Math.round(volume * 100)}%
+            </span>
+            <div className="w-px h-3.5 bg-slate-800" />
             <button 
               onClick={handleReset}
-              className="p-2 rounded-xl bg-black/40 border border-zinc-800 hover:bg-black/60 transition-all text-zinc-400 hover:text-white"
+              className="p-1 rounded-lg bg-zinc-950 border border-slate-800 hover:bg-slate-850 text-zinc-400 hover:text-white transition-all"
               title="Reiniciar batalla"
             >
-              <RotateCcw className="h-4 w-4" />
+              <RotateCcw className="h-3.5 w-3.5" />
             </button>
           </div>
 
           {/* Jefe Stats */}
-          <div className="flex items-center gap-2 bg-black/45 backdrop-blur-md px-3.5 py-2 rounded-2xl border border-zinc-800 shadow-lg text-right">
+          <div className="flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3.5 py-1.5 rounded-2xl border border-rose-500/20 shadow-[0_4px_12px_rgba(0,0,0,0.5)] text-right">
             <div className="text-right">
-              <span className="text-[10px] font-black uppercase text-zinc-300 block">{guildBoss.name}</span>
-              <div className="flex items-center gap-1.5 mt-0.5 justify-end">
-                <span className="text-[9px] font-bold text-zinc-400">{guildBoss.hp_actual} / {guildBoss.hp_max} HP</span>
-                <div className="w-24 h-2 bg-zinc-900 rounded-full overflow-hidden border border-zinc-800">
+              <span className="text-[10px] font-extrabold uppercase text-slate-100 tracking-wider block">{guildBoss.name}</span>
+              <div className="flex items-center gap-1.5 mt-0.5 justify-end relative">
+                <span className="text-[9px] font-bold text-rose-400/80 font-mono">{guildBoss.hp_actual} / {guildBoss.hp_max} HP</span>
+                <div className="w-28 h-2 bg-zinc-950 rounded-full overflow-hidden border border-slate-800 shadow-inner relative">
                   <div 
-                    className="h-full bg-gradient-to-r from-rose-600 to-orange-500 transition-all duration-500" 
+                    className="h-full bg-gradient-to-r from-rose-600 to-red-400 transition-all duration-500 shadow-[0_0_6px_#EF4444]" 
                     style={{ width: `${(guildBoss.hp_actual / guildBoss.hp_max) * 100}%` }}
                   />
+                  <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 112 10">
+                    <path d="M90,-2 L94,5 L91,7 L98,12" stroke="#000" strokeWidth="1.8" fill="none" opacity="0.9" strokeLinecap="round" />
+                    <path d="M94,5 L90,8" stroke="#000" strokeWidth="1.2" fill="none" opacity="0.8" strokeLinecap="round" />
+                  </svg>
                 </div>
-                <span className="text-[9px] font-black text-rose-500">HP</span>
+                <span className="text-[9px] font-black text-rose-500 tracking-wider">HP</span>
               </div>
             </div>
-            <div className="h-8 w-8 rounded-xl bg-zinc-900 border border-rose-950 flex items-center justify-center font-bold text-xs relative overflow-hidden">
+            <div className="h-8 w-8 rounded-xl bg-zinc-950 border border-rose-950 flex items-center justify-center font-bold text-xs relative overflow-hidden shadow-inner">
               👾
               {combatState === 'boss_hurt' && (
                 <div className="absolute inset-0 bg-red-600/60 animate-ping" />
@@ -347,240 +617,111 @@ export function RpgCombatViewport() {
           </div>
         </div>
 
-        {/* Campo de batalla isométrico en SVG/Canvas */}
-        <div className={`relative flex-1 w-full flex items-center justify-center ${combatState === 'boss_hurt' && partyHp === 35 ? 'animate-shake' : ''}`}>
-          <svg viewBox="0 0 800 360" className="w-full h-full">
-            {/* Definiciones de gradientes y filtros de brillo */}
-            <defs>
-              <linearGradient id="neon-glow" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#818CF8" stopOpacity="0.8" />
-                <stop offset="100%" stopColor="#C084FC" stopOpacity="0.2" />
-              </linearGradient>
-              <linearGradient id="grid-laser" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%" stopColor="#06B6D4" stopOpacity="0" />
-                <stop offset="50%" stopColor="#06B6D4" stopOpacity="0.4" />
-                <stop offset="100%" stopColor="#0891B2" stopOpacity="1" />
-              </linearGradient>
-              <filter id="glow-fx" x="-20%" y="-20%" width="140%" height="140%">
-                <feGaussianBlur stdDeviation="8" result="blur" />
-                <feComposite in="SourceGraphic" in2="blur" operator="over" />
-              </filter>
-            </defs>
+        {/* Campo de batalla WebGL dedicado con PixiJS (h-[45%]) */}
+        <div className="relative h-[45%] w-full flex items-center justify-center z-10">
+          <PixiCombatCanvas
+            combatState={combatState}
+            volume={volume}
+            guildBoss={guildBoss}
+            partyHp={partyHp}
+            elenaSub={elenaSub}
+            playSound={playSound}
+            onAttackFinish={() => {}}
+          />
 
-            {/* Piso isométrico digital */}
-            <polygon 
-              points="400,60 750,180 400,300 50,180" 
-              fill="#090514" 
-              stroke="#4338CA" 
-              strokeWidth="2" 
-              opacity="0.9"
-            />
-            {/* Rejilla de luz isométrica */}
-            <path d="M 400,60 L 400,300" stroke="#312E81" strokeWidth="1" opacity="0.5" />
-            <path d="M 50,180 L 750,180" stroke="#312E81" strokeWidth="1" opacity="0.5" />
-            <path d="M 225,120 L 575,240" stroke="#1E1B4B" strokeWidth="1" opacity="0.4" />
-            <path d="M 575,120 L 225,240" stroke="#1E1B4B" strokeWidth="1" opacity="0.4" />
-
-            {/* Columnas Neon / Líneas decorativas de fondo */}
-            <line x1="80" y1="80" x2="80" y2="280" stroke="#F43F5E" strokeWidth="3" filter="url(#glow-fx)" opacity="0.6" />
-            <line x1="720" y1="80" x2="720" y2="280" stroke="#06B6D4" strokeWidth="3" filter="url(#glow-fx)" opacity="0.6" />
-
-            {/* 1. santi (Guerrero) */}
-            <g transform="translate(180, 240)" className="transition-transform duration-300">
-              {/* Sombra */}
-              <ellipse cx="0" cy="25" rx="20" ry="8" fill="black" opacity="0.4" />
-              {/* Cuerpo del personaje (Guerrero azul) */}
-              <circle cx="0" cy="-10" r="14" fill="#3B82F6" stroke="#60A5FA" strokeWidth="2" />
-              {/* Casco / Visor */}
-              <rect x="-10" y="-16" width="20" height="6" rx="2" fill="#06B6D4" filter="url(#glow-fx)" />
-              {/* Armadura */}
-              <path d="M-15,4 L15,4 L10,25 L-10,25 Z" fill="#1D4ED8" />
-              {/* Espada/Escudo */}
-              <path d="M-22,-5 L-18,-5 L-18,15 L-22,15 Z" fill="#9CA3AF" />
-              <circle cx="18" cy="10" r="8" fill="#60A5FA" opacity="0.9" />
-              {/* Nombre etiqueta */}
-              <text x="0" y="42" fill="#9CA3AF" fontSize="9" fontWeight="bold" textAnchor="middle">Santi (Guerrero)</text>
-            </g>
-
-            {/* 2. lucas (Explorador) */}
-            <g transform="translate(140, 160)">
-              {/* Sombra */}
-              <ellipse cx="0" cy="25" rx="20" ry="8" fill="black" opacity="0.4" />
-              {/* Cuerpo (Verde) */}
-              <circle cx="0" cy="-10" r="14" fill="#10B981" stroke="#34D399" strokeWidth="2" />
-              <rect x="-8" y="-15" width="16" height="5" rx="1" fill="#FBBF24" />
-              <path d="M-13,4 L13,4 L8,25 L-8,25 Z" fill="#047857" />
-              {/* Blaster */}
-              <path d="M12,4 L22,4 L22,8 L12,8 Z" fill="#4B5563" />
-              <circle cx="23" cy="6" r="2" fill="#F43F5E" filter="url(#glow-fx)" />
-              <text x="0" y="42" fill="#9CA3AF" fontSize="9" fontWeight="bold" textAnchor="middle">Lucas (Explo)</text>
-            </g>
-
-            {/* 3. elena (Mago - Personaje activo) */}
-            <g transform="translate(250, 190)">
-              {/* Sombra */}
-              <ellipse cx="0" cy="25" rx="22" ry="9" fill="black" opacity="0.4" />
-              {/* Aura de Sincronía / Carga */}
-              {elenaSub?.status === 'submitted_on_time' && (
-                <>
-                  <circle cx="0" cy="-6" r="30" fill="none" stroke="#A78BFA" strokeWidth="2" opacity="0.8" className="animate-ping" />
-                  <ellipse cx="0" cy="25" rx="35" ry="12" fill="none" stroke="#C084FC" strokeWidth="1.5" opacity="0.6" className="animate-pulse" />
-                </>
-              )}
-              {/* Cuerpo (Púrpura) */}
-              <circle cx="0" cy="-12" r="15" fill="#8B5CF6" stroke="#A78BFA" strokeWidth="2" />
-              {/* Visor holográfico */}
-              <polygon points="-9,-14 9,-14 7,-8 -7,-8" fill="#EC4899" filter="url(#glow-fx)" />
-              {/* Toga */}
-              <path d="M-15,4 L15,4 L12,25 L-12,25 Z" fill="#6D28D9" />
-              {/* Bastón de Mago */}
-              <line x1="16" y1="-15" x2="16" y2="25" stroke="#D1D5DB" strokeWidth="2" />
-              <circle cx="16" cy="-16" r="6" fill="#A78BFA" filter="url(#glow-fx)" className={combatState === 'attacking' ? 'animate-pulse' : elenaSub?.status === 'submitted_on_time' ? 'animate-pulse' : ''} />
-              
-              {/* Brillo especial en el staff cuando está lista */}
-              {elenaSub?.status === 'submitted_on_time' && (
-                <circle cx="16" cy="-16" r="12" fill="none" stroke="#F43F5E" strokeWidth="1.5" className="animate-ping" opacity="0.8" />
-              )}
-              
-              <text x="0" y="42" fill="#E9D5FF" fontSize="9" fontWeight="extrabold" textAnchor="middle">Elena (Tú)</text>
-            </g>
-
-            {/* Lasers de Ataque Triple */}
-            {combatState === 'attacking' && (
-              <g>
-                {/* Rayos láser directos */}
-                <line x1="162" y1="166" x2="550" y2="180" stroke="#06B6D4" strokeWidth="4" filter="url(#glow-fx)" />
-                <line x1="198" y1="244" x2="550" y2="180" stroke="#06B6D4" strokeWidth="4" filter="url(#glow-fx)" />
-                <line x1="266" y1="174" x2="550" y2="180" stroke="#EC4899" strokeWidth="4" filter="url(#glow-fx)" />
-                
-                {/* Rayo central amplificado */}
-                <line x1="266" y1="174" x2="550" y2="180" stroke="#FFFFFF" strokeWidth="2" />
-              </g>
-            )}
-
-            {/* Boss: Guardián de Historia */}
-            {guildBoss.hp_actual > 0 ? (
-              <g 
-                transform="translate(550, 180)" 
-                className={`${combatState === 'boss_hurt' ? 'animate-hurt-bounce' : 'animate-levitate'}`}
-              >
-                {/* Sombra */}
-                <ellipse cx="0" cy="65" rx="55" ry="16" fill="black" opacity="0.5" />
-                
-                {/* Escudo digital hexagonal externo */}
-                <polygon 
-                  points="0,-75 55,-40 55,30 0,65 -55,30 -55,-40" 
-                  fill="none" 
-                  stroke="#EC4899" 
-                  strokeWidth="1.5" 
-                  strokeDasharray="6,4"
-                  opacity="0.3"
-                  className="animate-spin-slow"
-                />
-
-                {/* Núcleo de Matriz Digital (Cuadros superpuestos y glitch) */}
-                <rect x="-40" y="-50" width="80" height="100" fill="url(#neon-glow)" rx="8" opacity="0.85" stroke="#A78BFA" strokeWidth="2" />
-                
-                {/* Rostro pixelado y matrices */}
-                <rect x="-25" y="-25" width="50" height="3" fill="#111827" />
-                <circle cx="-15" cy="-12" r="4" fill="#000" />
-                <circle cx="15" cy="-12" r="4" fill="#000" />
-                
-                {/* Ojos brillantes en modo herido */}
-                {combatState === 'boss_hurt' ? (
-                  <>
-                    <rect x="-20" y="-16" width="10" height="8" fill="#EF4444" />
-                    <rect x="10" y="-16" width="10" height="8" fill="#EF4444" />
-                  </>
-                ) : (
-                  <>
-                    <rect x="-18" y="-15" width="6" height="6" fill="#06B6D4" filter="url(#glow-fx)" />
-                    <rect x="12" y="-15" width="6" height="6" fill="#06B6D4" filter="url(#glow-fx)" />
-                  </>
-                )}
-                
-                {/* Boca estilo glitch */}
-                <path d="M-12,15 L12,15 L8,20 L-8,20 Z" fill="#EF4444" opacity="0.8" />
-                
-                {/* Partículas / Fragmentos de código binario flotantes */}
-                <text x="-32" y="45" fill="#34D399" fontSize="8" fontFamily="monospace" opacity="0.8">01</text>
-                <text x="22" y="45" fill="#34D399" fontSize="8" fontFamily="monospace" opacity="0.8">10</text>
-                <text x="-20" y="-35" fill="#06B6D4" fontSize="8" fontFamily="monospace" opacity="0.6">SYS_ERR</text>
-                <text x="10" y="32" fill="#F43F5E" fontSize="7" fontFamily="monospace" opacity="0.7">404</text>
-              </g>
-            ) : (
-              // Explosión digital al morir el jefe
-              <g transform="translate(550, 180)">
-                <ellipse cx="0" cy="65" rx="55" ry="16" fill="black" opacity="0.2" />
-                <circle cx="0" cy="0" r="45" fill="none" stroke="#EC4899" strokeWidth="3" className="animate-ping" />
-                <circle cx="0" cy="0" r="15" fill="#FEE2E2" filter="url(#glow-fx)" opacity="0.8" />
-                <text x="0" y="-55" fill="#FBBF24" fontSize="16" fontWeight="black" textAnchor="middle" filter="url(#glow-fx)">¡DERROTADO!</text>
-              </g>
-            )}
-
-            {/* Números flotantes de Daño y XP */}
-            {damageNumber !== null && (
-              <g transform="translate(550, 90)" className="animate-float-damage">
-                <rect x="-35" y="-18" width="70" height="24" rx="12" fill="#EF4444" opacity="0.95" />
-                <text x="0" y="-1" fill="#FFFFFF" fontSize="12" fontWeight="black" textAnchor="middle">-{damageNumber} HP</text>
-              </g>
-            )}
-
-            {xpNumber !== null && (
-              <g transform="translate(620, 120)" className="animate-float-damage-delay">
-                <rect x="-35" y="-18" width="70" height="24" rx="12" fill="#FBBF24" opacity="0.95" />
-                <text x="0" y="-1" fill="#111827" fontSize="11" fontWeight="black" textAnchor="middle">-{xpNumber} XP</text>
-              </g>
-            )}
-          </svg>
+          {/* Números flotantes de Daño y XP en HTML (Súper nítidos y posicionados) */}
+          {damageNumber !== null && (
+            <div className="absolute top-[35%] left-[84%] -translate-x-1/2 -translate-y-1/2 pointer-events-none anim-float-up z-20">
+              <div className="flex flex-col items-center">
+                {/* Gran destello de impacto */}
+                <div className="w-14 h-14 bg-white border-4 border-rose-500 rounded-full animate-ping absolute opacity-45" />
+                <div className="px-3 py-1 bg-red-600 border border-white text-white font-extrabold text-xs rounded-xl shadow-lg relative">
+                  -{damageNumber} HP
+                </div>
+              </div>
+            </div>
+          )}
+          {xpNumber !== null && (
+            <div className="absolute top-[42%] left-[88%] -translate-x-1/2 -translate-y-1/2 pointer-events-none anim-float-up z-20" style={{ animationDelay: '0.15s' }}>
+              <div className="px-2.5 py-0.5 bg-yellow-500 border border-white text-zinc-950 font-extrabold text-[10px] rounded-lg shadow-lg relative">
+                -{xpNumber} XP
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Diálogo de Sombra y Botones de Acción Móvil */}
-        <div className="w-full flex flex-col gap-3 z-10 px-2 md:px-4 pb-1">
-          {/* Diálogo de la Inteligencia de Soporte */}
-          <div className="bg-zinc-950/75 border border-purple-900/50 rounded-2xl p-3 flex gap-2.5 items-center backdrop-blur-md">
-            <div className="h-7 w-7 rounded-lg bg-indigo-950 border border-indigo-500 flex items-center justify-center text-xs animate-bounce shadow">
+        {/* Diálogo de Sombra y Botones de Acción (h-[36%]) */}
+        <div className="w-full h-[36%] flex flex-col justify-between px-1 md:px-4 pb-1 z-20">
+          {/* Diálogo */}
+          <div className="relative bg-zinc-950/90 border border-cyan-500/50 rounded-2xl p-2 md:p-2.5 flex gap-2 items-center backdrop-blur-md shadow-[0_0_12px_rgba(6,182,212,0.25)]">
+            {/* Header capsule SOMBRA */}
+            <div className="absolute -top-3.5 left-4 px-3 py-0.5 bg-cyan-400 text-[8px] font-black uppercase tracking-wider text-black rounded-t-md rounded-br-md clip-diagonal shadow-lg">
+              SOMBRA
+            </div>
+            
+            <div className="h-6 w-6 rounded-lg bg-indigo-950/80 border border-indigo-400/50 flex items-center justify-center text-[10px] animate-bounce shadow mt-1.5">
               💡
             </div>
-            <div className="flex-1">
-              <span className="text-[8px] font-black text-cyan-400 tracking-wider uppercase block">Sombra AI</span>
-              <p className="text-[10px] md:text-xs text-zinc-200 mt-0.5 leading-normal">{sombraText}</p>
+            <div className="flex-1 pt-1">
+              <p className="text-[9.5px] md:text-xs text-zinc-100 font-medium leading-normal">
+                <span className="font-extrabold text-cyan-400">Sombra:</span> {sombraText} 💬
+              </p>
             </div>
           </div>
 
-          {/* Menú de Botones del Juego */}
-          <div className="flex justify-between items-center gap-4 mt-1">
-            <div className="flex gap-2">
+          {/* Menú de Botones de Juego */}
+          <div className="flex justify-between items-center gap-4">
+            <div className="flex gap-1.5">
               <button 
                 onClick={() => setSombraText('Sombra: Pista: Para derrotar al guardián, debes entregar tareas pendientes de Matemáticas. ¡Eso recarga los núcleos de daño!')}
-                className="px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-[10px] md:text-xs font-bold rounded-lg border border-zinc-800 tracking-wide transition-all uppercase"
+                className="px-3 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-[9px] md:text-xs font-bold rounded-lg border border-slate-800 tracking-wide transition-all uppercase text-slate-300 hover:text-white"
               >
                 [ 🔍 Pista ]
               </button>
               <button 
                 onClick={() => setSombraText('Sombra: Inventario actual: 1x Pergamino del Gremio, 3x Viales de Tinta de Sincronía.')}
-                className="px-3.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-[10px] md:text-xs font-bold rounded-lg border border-zinc-800 tracking-wide transition-all uppercase"
+                className="px-3 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 text-[9px] md:text-xs font-bold rounded-lg border border-slate-800 tracking-wide transition-all uppercase text-slate-300 hover:text-white"
               >
                 [ 🎒 Inventario ]
               </button>
             </div>
 
-            {/* Controles de Ataque */}
-            <div className="flex gap-2.5">
+            {/* Controles de Ataque y Navegación */}
+            <div className="flex items-center gap-2">
               <button
                 onClick={handleSincronizadoAttack}
                 disabled={guildBoss.hp_actual <= 0 || combatState === 'attacking'}
-                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-xs font-black tracking-widest uppercase transition-all shadow-md shadow-indigo-600/30 flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-[10px] md:text-xs font-black tracking-widest uppercase transition-all shadow-md shadow-indigo-600/35 flex items-center gap-1.5 border border-purple-500/20"
               >
-                <Zap className="h-3.5 w-3.5 fill-current text-yellow-300" />
+                <Zap className="h-3 w-3 fill-current text-yellow-300 animate-pulse" />
                 Ataque Sincronizado
               </button>
+
+              <div className="flex gap-1.5">
+                <button 
+                  onClick={() => setSombraText('Sombra: Navegando al hito anterior del portal académico...')}
+                  className="px-2 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 border border-slate-800 hover:border-slate-700 rounded-xl font-black text-[10px] text-slate-300 hover:text-white transition-all shadow-inner"
+                >
+                  &lt;&lt;
+                </button>
+                <button 
+                  onClick={() => setSombraText('Sombra: Explorando el portal de conocimiento avanzado...')}
+                  className="px-2 py-1.5 bg-zinc-900/90 hover:bg-zinc-800 border border-slate-800 hover:border-slate-700 rounded-xl font-black text-[10px] text-slate-300 hover:text-white transition-all shadow-inner"
+                >
+                  &gt;&gt;
+                </button>
+              </div>
             </div>
           </div>
         </div>
+
+        {/* Indicador de modo (one-hand) en la base inferior externa */}
+        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 text-[8px] font-bold text-slate-600 tracking-widest uppercase pointer-events-none">
+          one-hand
+        </div>
       </div>
 
-      {/* Controladores de Simulación del Gremio (Fuera del visor celular para no contaminar la interfaz de juego) */}
+      {/* Controladores de Simulación del Gremio */}
       <div className="rounded-3xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
         <h3 className="text-xs font-black uppercase text-zinc-400 dark:text-zinc-500 tracking-wider mb-4 flex items-center gap-2">
           <Briefcase className="h-4 w-4 text-purple-500" />
