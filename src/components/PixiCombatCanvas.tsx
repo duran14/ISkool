@@ -105,12 +105,12 @@ export default function PixiCombatCanvas({
               const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
               const data = imgData.data;
               
-              // Cambiar píxeles negros a transparentes
+              // Cambiar píxeles negros a transparentes (umbral aumentado a 45 para eliminar ruido del fondo)
               for (let i = 0; i < data.length; i += 4) {
                 const r = data[i];
                 const g = data[i+1];
                 const b = data[i+2];
-                if (r < 10 && g < 10 && b < 10) {
+                if (r < 45 && g < 45 && b < 45) {
                   data[i+3] = 0;
                 }
               }
@@ -149,6 +149,12 @@ export default function PixiCombatCanvas({
 
       appRef.current = app;
       setLoading(false);
+      
+      // Ajustar el canvas para que sea responsive y mantenga la proporción sin recortes
+      app.canvas.style.width = '100%';
+      app.canvas.style.height = '100%';
+      app.canvas.style.objectFit = 'contain';
+      
       containerRef.current.appendChild(app.canvas);
 
       // --- CONFIGURACIÓN DE CAPAS ---
