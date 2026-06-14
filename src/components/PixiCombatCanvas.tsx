@@ -82,49 +82,14 @@ export default function PixiCombatCanvas({
     async function initPixi() {
       if (!containerRef.current) return;
 
-      // 1. Cargar texturas de manera asíncrona y remover el fondo negro
+      // 1. Cargar texturas de manera asíncrona (imágenes pre-procesadas con transparencia nativa)
       let bgTex, santiTex, lucasTex, elenaTex, bossTex;
       try {
-        bgTex = await PIXI.Assets.load('/images/rpg/combat_bg.png');
-
-        const loadWithChromaKey = async (url: string): Promise<PIXI.Texture> => {
-          return new Promise((resolve, reject) => {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.src = url;
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              canvas.width = img.width;
-              canvas.height = img.height;
-              const ctx = canvas.getContext('2d');
-              if (!ctx) {
-                resolve(PIXI.Texture.from(img));
-                return;
-              }
-              ctx.drawImage(img, 0, 0);
-              const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-              const data = imgData.data;
-              
-              // Cambiar píxeles negros a transparentes (umbral aumentado a 45 para eliminar ruido del fondo)
-              for (let i = 0; i < data.length; i += 4) {
-                const r = data[i];
-                const g = data[i+1];
-                const b = data[i+2];
-                if (r < 45 && g < 45 && b < 45) {
-                  data[i+3] = 0;
-                }
-              }
-              ctx.putImageData(imgData, 0, 0);
-              resolve(PIXI.Texture.from(canvas));
-            };
-            img.onerror = (err) => reject(err);
-          });
-        };
-
-        santiTex = await loadWithChromaKey('/images/rpg/santi_sprite.png');
-        lucasTex = await loadWithChromaKey('/images/rpg/lucas_sprite.png');
-        elenaTex = await loadWithChromaKey('/images/rpg/elena_sprite.png');
-        bossTex = await loadWithChromaKey('/images/rpg/boss_sprite.png');
+        bgTex = await PIXI.Assets.load('/images/rpg/combat_bg.png?v=3');
+        santiTex = await PIXI.Assets.load('/images/rpg/santi_sprite.png?v=3');
+        lucasTex = await PIXI.Assets.load('/images/rpg/lucas_sprite.png?v=3');
+        elenaTex = await PIXI.Assets.load('/images/rpg/elena_sprite.png?v=3');
+        bossTex = await PIXI.Assets.load('/images/rpg/boss_sprite.png?v=3');
       } catch (e) {
         console.error("Error cargando los assets de combate:", e);
         return;
