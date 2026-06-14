@@ -5,9 +5,9 @@ import { useGamification } from '@/context/gamification-context';
 import { Volume2, VolumeX, Shield, Swords, Sparkles, HelpCircle, Briefcase, Zap, RotateCcw } from 'lucide-react';
 import dynamic from 'next/dynamic';
 
-// Importar dinámicamente el canvas de PixiJS desactivando SSR para evitar errores del objeto window
-const PixiCombatCanvas = dynamic(
-  () => import('./PixiCombatCanvas'),
+// Importar dinámicamente el canvas Data-Driven desactivando SSR para evitar errores del objeto window
+const DataDrivenCombatCanvas = dynamic(
+  () => import('./DataDrivenCombatCanvas'),
   { ssr: false }
 );
 
@@ -619,15 +619,57 @@ export function RpgCombatViewport() {
 
         {/* Campo de batalla WebGL dedicado con PixiJS (h-[45%]) */}
         <div className="relative h-[45%] w-full flex items-center justify-center z-10">
-          <PixiCombatCanvas
-            combatState={combatState}
-            volume={volume}
-            guildBoss={guildBoss}
-            partyHp={partyHp}
-            elenaSub={elenaSub}
-            playSound={playSound}
-            onAttackFinish={() => {}}
-          />
+          {(() => {
+            // Construir Payload JSON Data-Driven
+            const combatPayload = {
+              mission_id: "mis-hist-01",
+              homework_id: "hw-hist-01",
+              enemy_data: {
+                enemy_id: "boss-firewall",
+                name: guildBoss.name,
+                hp_max: guildBoss.hp_max,
+                hp_remaining: guildBoss.hp_actual,
+                skin_id: "skin_firewall"
+              },
+              attackers: [
+                {
+                  student_id: "std-sec",
+                  name: "Elena",
+                  role: "Sage_Cyber",
+                  skin_texture_id: "skin_elena",
+                  rpg_action: "LASER_BEAM",
+                  damage: 20
+                },
+                {
+                  student_id: "std-pa",
+                  name: "Santi",
+                  role: "Cyber_Marine",
+                  skin_texture_id: "skin_santi",
+                  rpg_action: "RIFLE_BURST",
+                  damage: 15
+                },
+                {
+                  student_id: "std-pb",
+                  name: "Lucas",
+                  role: "Scout_Space",
+                  skin_texture_id: "skin_lucas",
+                  rpg_action: "BLASTER_SHOT",
+                  damage: 15
+                }
+              ],
+              server_calculated_total_damage: 50
+            };
+
+            return (
+              <DataDrivenCombatCanvas
+                payload={combatPayload}
+                localStudentId="std-sec" // Elena es la estudiante local en este visor de Secundaria
+                combatState={combatState}
+                volume={volume}
+                playSound={playSound}
+              />
+            );
+          })()}
 
           {/* Números flotantes de Daño y XP en HTML (Súper nítidos y posicionados) */}
           {damageNumber !== null && (
