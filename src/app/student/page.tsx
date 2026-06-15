@@ -16,14 +16,33 @@ export default function StudentDashboard() {
   const { 
     stats, avatar, missions, studentBadges, badges, activeStudentId, 
     feedPet, playWithPet, levelUpAttribute, portfolioItems, submitPeerReview,
-    changeAvatar
+    changeAvatar, detailedStudents,
+    shopArtifacts, studentInventoryMap, studentMessages, purchaseArtifact, markStudentMessageAsRead
   } = useGamification();
+
+  const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
+
+  const activeStudent = detailedStudents?.find(s => s.id === activeStudentId);
+  const activeLevel = activeStudent?.level || 'preparatoria';
+  const activeGrade = activeStudent?.grade || '1º';
 
   const [isCustomizerOpen, setIsCustomizerOpen] = useState(false);
   const [isPetModalOpen, setIsPetModalOpen] = useState(false);
   const [selectedReviewItem, setSelectedReviewItem] = useState<any>(null);
   const [peerScore, setPeerScore] = useState('9.0');
   const [peerComment, setPeerComment] = useState('');
+
+  const [showTour, setShowTour] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && activeLevel === 'secundaria') {
+      const completed = localStorage.getItem('iskool_rpg_tour_completed');
+      if (!completed) {
+        setShowTour(true);
+      }
+    }
+  }, [activeLevel]);
 
   // Calcular el progreso del nivel
   const xpForCurrentLevel = stats.level * 200;
@@ -395,7 +414,7 @@ export default function StudentDashboard() {
           <div className="relative z-10 flex flex-col md:flex-row gap-8 items-center">
             
             {/* Hoja de Atributos */}
-            <div className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-800 backdrop-blur-md shadow-2xl w-full md:w-72 flex flex-col gap-4">
+            <div id="rpg-attributes-panel" className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-800 backdrop-blur-md shadow-2xl w-full md:w-72 flex flex-col gap-4">
               <div className="flex justify-between items-center border-b border-zinc-800 pb-2">
                 <span className="text-xs font-black text-purple-400 uppercase tracking-widest flex items-center gap-1">
                   <User className="h-4 w-4" />
@@ -476,22 +495,39 @@ export default function StudentDashboard() {
             </div>
 
             {/* Info principal RPG */}
-            <div className="flex-1">
-              <span className="bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
-                Gremio de Héroes
-              </span>
-              <h1 className="text-3xl font-extrabold tracking-tight mt-2">Elena la Sabia</h1>
-              <p className="text-zinc-300 text-xs mt-1">Completa contratos académicos para subir tus estadísticas de rol.</p>
+            <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center w-full gap-6">
+              <div>
+                <span className="bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
+                  Gremio de Héroes
+                </span>
+                <h1 className="text-3xl font-extrabold tracking-tight mt-2">{avatar.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Elena la Sabia')}</h1>
+                <p className="text-zinc-300 text-xs mt-1">Completa contratos académicos para subir tus estadísticas de rol.</p>
 
-              {/* XP RPG */}
-              <div className="mt-4 max-w-md">
-                <div className="flex justify-between items-center text-xs font-bold mb-1">
-                  <span>Nivel {stats.level} ({rpgClass})</span>
-                  <span>{stats.xp} / {xpForCurrentLevel} XP</span>
+                {/* XP RPG */}
+                <div className="mt-4 w-64 sm:w-80">
+                  <div className="flex justify-between items-center text-xs font-bold mb-1">
+                    <span>Nivel {stats.level} ({rpgClass})</span>
+                    <span>{stats.xp} / {xpForCurrentLevel} XP</span>
+                  </div>
+                  <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden">
+                    <div className="h-full bg-purple-500 rounded-full" style={{ width: `${progressPercent}%` }} />
+                  </div>
                 </div>
-                <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-500 rounded-full" style={{ width: `${progressPercent}%` }} />
-                </div>
+              </div>
+
+              {/* Botón de la Tienda de Artefactos */}
+              <div className="flex flex-col gap-2">
+                <Link
+                  id="rpg-shop-banner-button"
+                  href="/student/shop"
+                  className="relative group overflow-hidden px-6 py-4 bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-amber-950/20 transition-all duration-300 border border-yellow-400/30 active:scale-95 flex flex-col items-center gap-1.5"
+                >
+                  <span className="text-2xl">🏬</span>
+                  <span className="relative z-10 flex items-center gap-2">
+                    Tienda Mágica
+                  </span>
+                  <div className="absolute inset-0 bg-white/25 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                </Link>
               </div>
             </div>
 
@@ -499,7 +535,7 @@ export default function StudentDashboard() {
         </div>
 
         {/* Campo de Batalla del Gremio */}
-        <div className="flex flex-col gap-4">
+        <div id="rpg-combat-arena" className="flex flex-col gap-4">
           <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2">
             <Swords className="h-5 w-5 text-purple-500" />
             Arena del Gremio: Batalla Sincrónica
@@ -528,6 +564,8 @@ export default function StudentDashboard() {
             </div>
           ))}
         </div>
+
+
       </div>
     );
   };
@@ -537,8 +575,8 @@ export default function StudentDashboard() {
     const funding = stats.funding_credits ?? 1000;
     
     // Buscar entregas del portafolio que el estudiante actual puede "coevaluar" (de otros alumnos)
-    // Para simplificar la demo, listamos items de portafolio que no pertenecen a std-prep (ej. std-pa) y que no tienen coevaluación registrada
-    const peerItemsToReview = portfolioItems.filter(item => item.student_id !== 'std-prep' && !item.peer_review_score);
+    // Para simplificar la demo, listamos items de portafolio que no pertenecen a este alumno y que no tienen coevaluación registrada
+    const peerItemsToReview = portfolioItems.filter(item => item.student_id !== activeStudentId && !item.peer_review_score);
 
     return (
       <div className="flex flex-col gap-8">
@@ -551,7 +589,7 @@ export default function StudentDashboard() {
               <span className="bg-blue-500/25 border border-blue-500/30 text-blue-400 text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                 Incubadora de Innovación
               </span>
-              <h1 className="text-3xl font-black mt-2">Mateo Díaz</h1>
+              <h1 className="text-3xl font-black mt-2">{avatar.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Mateo Díaz')}</h1>
               <p className="text-xs text-zinc-400 mt-1">Simula proyectos profesionales, coevalúa propuestas y acumula créditos de inversión.</p>
             </div>
 
@@ -706,10 +744,9 @@ export default function StudentDashboard() {
       <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         
         {/* Renderizado Condicional por Nivel */}
-        {activeStudentId === 'std-pb' && renderPrimariaBaja()}
-        {activeStudentId === 'std-pa' && renderPrimariaAlta()}
-        {activeStudentId === 'std-sec' && renderSecundariaRPG()}
-        {activeStudentId === 'std-prep' && renderPreparatoriaStartup()}
+        {activeLevel === 'primaria' && (parseInt(activeGrade) <= 3 ? renderPrimariaBaja() : renderPrimariaAlta())}
+        {activeLevel === 'secundaria' && renderSecundariaRPG()}
+        {activeLevel === 'preparatoria' && renderPreparatoriaStartup()}
 
       </main>
 
@@ -767,6 +804,76 @@ export default function StudentDashboard() {
                 className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-full text-xs font-bold shadow-md shadow-emerald-500/10 transition-all"
               >
                 ¡Listo!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tour Overlay de Gamificación */}
+      {showTour && activeLevel === 'secundaria' && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950/80 backdrop-blur-sm transition-all duration-300">
+          <div className="relative max-w-md w-full mx-4 p-6 rounded-3xl border border-purple-500/50 bg-gradient-to-br from-zinc-900 to-purple-950/90 text-white shadow-[0_0_50px_rgba(168,85,247,0.3)] flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-200">
+            
+            {/* Step indicator */}
+            <div className="flex justify-between items-center text-[10px] font-black text-purple-400 uppercase tracking-widest">
+              <span>Guía del Gremio (Paso {tourStep + 1} de 4)</span>
+              <button 
+                onClick={() => {
+                  setShowTour(false);
+                  localStorage.setItem('iskool_rpg_tour_completed', 'true');
+                }}
+                className="hover:text-purple-300 transition-colors"
+              >
+                Saltar Tour ✕
+              </button>
+            </div>
+
+            {/* Mentor Avatar and Dialogue */}
+            <div className="flex gap-4 items-start bg-zinc-950/40 p-4 rounded-2xl border border-purple-900/30">
+              <div className="text-4xl p-2 bg-purple-950/50 rounded-2xl border border-purple-500/30 shadow-inner select-none">🧙‍♂️</div>
+              <div className="flex-1">
+                <strong className="text-purple-300 text-xs font-bold block mb-1">Sombra (Mentor de Rol)</strong>
+                <p className="text-xs text-zinc-300 leading-relaxed font-semibold">
+                  {tourStep === 0 && "🔮 ¡Bienvenido al Gremio de Héroes! Aquí verás tu Hoja de Héroe. Al completar contratos de tareas y subir de nivel, obtendrás puntos para mejorar tu Fuerza, Inteligencia y Defensa."}
+                  {tourStep === 1 && "🏬 Esta es la Tienda de Artefactos. Compra objetos mágicos con las monedas que ganes. ¡Cada artefacto te otorga una oportunidad extra de reintentar el examen final!"}
+                  {tourStep === 2 && "👾 En la Arena, tus tareas pendientes cobran vida como monstruos en el lado derecho. ¡Completa las tareas para aumentar tu Poder Académico y golpear con fuerza!"}
+                  {tourStep === 3 && "👑 El Examen es el Jefe Final. Si no completas tus tareas, tu Poder Académico será 0% y tus ataques harán 0 de daño. ¡Véncelo en menos turnos para obtener mejor calificación!"}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="flex justify-between items-center mt-2">
+              <button
+                disabled={tourStep === 0}
+                onClick={() => setTourStep(prev => prev - 1)}
+                className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-bold disabled:opacity-40 disabled:pointer-events-none transition-colors"
+              >
+                Atrás
+              </button>
+              
+              <button
+                onClick={() => {
+                  if (tourStep < 3) {
+                    setTourStep(prev => prev + 1);
+                    // Highlight corresponding element if needed
+                    const targets = ["rpg-attributes-panel", "rpg-shop-banner-button", "rpg-combat-arena", "rpg-combat-arena"];
+                    const targetId = targets[tourStep + 1];
+                    const el = document.getElementById(targetId);
+                    if (el) {
+                      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      el.classList.add('ring-4', 'ring-yellow-400/60', 'duration-500');
+                      setTimeout(() => el.classList.remove('ring-4', 'ring-yellow-400/60'), 2000);
+                    }
+                  } else {
+                    setShowTour(false);
+                    localStorage.setItem('iskool_rpg_tour_completed', 'true');
+                  }
+                }}
+                className="px-5 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider transition-all shadow-md active:scale-95"
+              >
+                {tourStep === 3 ? "¡Entendido!" : "Siguiente"}
               </button>
             </div>
           </div>

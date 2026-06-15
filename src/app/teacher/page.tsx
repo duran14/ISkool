@@ -88,11 +88,34 @@ export default function TeacherDashboard() {
     sendParentMessage,
     saveQuest,
     linkPortfolioItemToQuest,
-    submitPortfolioItemOnBehalf
+    submitPortfolioItemOnBehalf,
+    shopArtifacts,
+    studentInventoryMap,
+    grantArtifact,
+    revokeArtifact,
+    createArtifact
   } = useGamification();
 
   // Expediente escolar detallado
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
+  const [dossierTab, setDossierTab] = useState<'info' | 'inventory' | 'create_art'>('info');
+
+  // Reset dossier tab when student changes
+  useEffect(() => {
+    setDossierTab('info');
+    setRevokingArtifactId(null);
+    setRevocationReason('');
+  }, [selectedStudent]);
+
+  // Estados para creación de artefactos
+  const [newArtName, setNewArtName] = useState('');
+  const [newArtPrice, setNewArtPrice] = useState(25);
+  const [newArtDesc, setNewArtDesc] = useState('');
+  const [newArtIcon, setNewArtIcon] = useState('Shield');
+
+  // Estados para revocación
+  const [revokingArtifactId, setRevokingArtifactId] = useState<string | null>(null);
+  const [revocationReason, setRevocationReason] = useState('');
 
   // Estado para el modal de emergencia (SOS)
   const [isEmergencyModalOpen, setIsEmergencyModalOpen] = useState(false);
@@ -3054,192 +3077,414 @@ export default function TeacherDashboard() {
                 </div>
               </div>
             </div>
+            {/* Cabecera de Pestañas del Dossier */}
+            <div className="px-6 py-2 border-b border-zinc-150 dark:border-zinc-800 flex gap-2 bg-zinc-50/50 dark:bg-zinc-950/20">
+              <button
+                onClick={() => setDossierTab('info')}
+                className={`px-4 py-2 text-xs font-black rounded-t-xl transition-all border-b-2 ${
+                  dossierTab === 'info' 
+                    ? 'border-purple-500 text-purple-650 dark:text-purple-400 font-extrabold' 
+                    : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                📋 Expediente Escolar
+              </button>
+              <button
+                onClick={() => setDossierTab('inventory')}
+                className={`px-4 py-2 text-xs font-black rounded-t-xl transition-all border-b-2 ${
+                  dossierTab === 'inventory' 
+                    ? 'border-purple-500 text-purple-650 dark:text-purple-400 font-extrabold' 
+                    : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                🎒 Gestión de Inventario
+              </button>
+              <button
+                onClick={() => setDossierTab('create_art')}
+                className={`px-4 py-2 text-xs font-black rounded-t-xl transition-all border-b-2 ${
+                  dossierTab === 'create_art' 
+                    ? 'border-purple-500 text-purple-650 dark:text-purple-400 font-extrabold' 
+                    : 'border-transparent text-zinc-400 hover:text-zinc-600'
+                }`}
+              >
+                ✨ Diseñar Artefacto
+              </button>
+            </div>
 
             {/* Contenido (Desplazable si es necesario) */}
             <div className="flex-1 overflow-y-auto p-6 md:p-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                
-                {/* SECCIÓN 1: DATOS PERSONALES */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
-                    <User className="h-4 w-4 text-violet-500" />
-                    Datos Personales
-                  </h3>
-                  
-                  <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Fecha de Nacimiento</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.birth_date}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Edad Calculada</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex-shrink-0">
-                        {(() => {
-                          if (!selectedStudent.birth_date) return 0;
-                          const birthDate = new Date(selectedStudent.birth_date);
-                          const today = new Date();
-                          let age = today.getFullYear() - birthDate.getFullYear();
-                          const m = today.getMonth() - birthDate.getMonth();
-                          if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                            age--;
-                          }
-                          return age;
-                        })()} años
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Género</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.gender || 'Masculino'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Escuela de Procedencia</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.previous_school || 'Ninguna'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Estado en el Sistema</span>
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase mt-1">
-                        ● {selectedStudent.status}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* SECCIÓN 2: CONTACTO Y FAMILIA */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
-                    <Phone className="h-4 w-4 text-violet-500" />
-                    Contacto y Familiares
-                  </h3>
-                  
-                  <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Dirección</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-start gap-1"><MapPin className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0 mt-0.5" /> {selectedStudent.address || 'S/D'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Teléfono de Contacto</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.phone || 'S/T'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Correo Electrónico</span>
-                      <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.email || 'S/C'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block">Padres / Tutores</span>
-                      <div className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300 leading-tight space-y-1">
-                        {selectedStudent.mother_name && <div>• <strong>Madre:</strong> {selectedStudent.mother_name}</div>}
-                        {selectedStudent.father_name && <div>• <strong>Padre:</strong> {selectedStudent.father_name}</div>}
-                        {selectedStudent.tutor_name && <div>• <strong>Tutor Legal:</strong> {selectedStudent.tutor_name}</div>}
-                      </div>
-                    </div>
-                    {(selectedStudent.emergency_contact_name || selectedStudent.emergency_contact_phone) && (
-                      <div className="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-2 mt-2">
-                        <span className="text-[10px] font-black text-red-500 dark:text-red-400 uppercase block">Contacto de Emergencia</span>
-                        <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 block">{selectedStudent.emergency_contact_name || 'S/N'}</span>
-                        <span className="text-[10.5px] text-zinc-500 block">{selectedStudent.emergency_contact_phone || 'S/T'}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* SECCIÓN 3: EXPEDIENTE MÉDICO Y ADMINISTRATIVO */}
-                <div className="space-y-4">
-                  <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
-                    <Activity className="h-4 w-4 text-violet-500" />
-                    Expediente Escolar
-                  </h3>
-                  
+              
+              {dossierTab === 'info' && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* SECCIÓN 1: DATOS PERSONALES */}
                   <div className="space-y-4">
-                    {/* Pagos Pendientes */}
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Pagos y Adeudos</span>
-                      {selectedStudent.pending_payments && selectedStudent.pending_payments.length > 0 ? (
-                        <div className="space-y-1.5">
-                          {selectedStudent.pending_payments.map((p, idx) => (
-                            <div key={idx} className="p-2 rounded bg-amber-50 dark:bg-amber-955/10 border border-amber-200/50 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
-                              <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
-                              {p}
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-955/10 border border-emerald-200/50 text-[11px] font-bold text-emerald-700 dark:text-emerald-450 flex items-center gap-1.5">
-                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                          Sin adeudos registrados.
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Reportes de Conducta */}
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Reportes de Conducta</span>
-                      {selectedStudent.behavior_reports && selectedStudent.behavior_reports.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedStudent.behavior_reports.map((r, idx) => (
-                            <div key={idx} className="p-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-955/10 border border-rose-200/40 text-[10.5px]">
-                              <div className="flex justify-between font-bold text-rose-700 dark:text-rose-400 mb-1 text-[9.5px]">
-                                <span>Reporta: {r.reporter}</span>
-                                <span>{r.date}</span>
-                              </div>
-                              <p className="text-zinc-700 dark:text-zinc-300">{r.description}</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-zinc-500 italic">No cuenta con incidencias ni reportes disciplinarios.</p>
-                      )}
-                    </div>
-
-                    {/* Notas del Profesor */}
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Notas de Profesores</span>
-                      {selectedStudent.teacher_notes && selectedStudent.teacher_notes.length > 0 ? (
-                        <div className="space-y-2">
-                          {selectedStudent.teacher_notes.map((n, idx) => (
-                            <div key={idx} className="p-2.5 rounded-xl bg-violet-50/60 dark:bg-violet-955/10 border border-violet-200/30 text-[10.5px]">
-                              <div className="flex justify-between font-bold text-violet-700 dark:text-violet-400 mb-1 text-[9.5px]">
-                                <span>Prof. {n.teacher_name}</span>
-                                <span>{n.date}</span>
-                              </div>
-                              <p className="text-zinc-700 dark:text-zinc-300 italic">"{n.note}"</p>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-xs text-zinc-500 italic">Sin anotaciones de maestros.</p>
-                      )}
-                    </div>
-
-                    {/* Médico */}
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850 space-y-2">
-                      <div className="flex justify-between items-center">
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase">Tipo de Sangre</span>
-                        <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 text-xs font-extrabold">{selectedStudent.blood_type || 'S/D'}</span>
-                      </div>
-                      
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                      <User className="h-4 w-4 text-violet-500" />
+                      Datos Personales
+                    </h3>
+                    
+                    <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
                       <div>
-                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Alergias / Restricciones Médicas</span>
-                        {selectedStudent.medical_notes ? (
-                          <div className="p-2.5 rounded-lg bg-red-50/80 border border-red-200/50 dark:bg-red-950/10 dark:border-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium">
-                            {selectedStudent.medical_notes}
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Fecha de Nacimiento</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.birth_date}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Edad Calculada</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex-shrink-0">
+                          {(() => {
+                            if (!selectedStudent.birth_date) return 0;
+                            const birthDate = new Date(selectedStudent.birth_date);
+                            const today = new Date();
+                            let age = today.getFullYear() - birthDate.getFullYear();
+                            const m = today.getMonth() - birthDate.getMonth();
+                            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                              age--;
+                            }
+                            return age;
+                          })()} años
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Género</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.gender || 'Masculino'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Escuela de Procedencia</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{selectedStudent.previous_school || 'Ninguna'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Estado en el Sistema</span>
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase mt-1">
+                          ● {selectedStudent.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN 2: CONTACTO Y FAMILIA */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                      <Phone className="h-4 w-4 text-violet-500" />
+                      Contacto y Familiares
+                    </h3>
+                    
+                    <div className="space-y-3 bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Dirección</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-start gap-1"><MapPin className="h-3.5 w-3.5 text-zinc-400 flex-shrink-0 mt-0.5" /> {selectedStudent.address || 'S/D'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Teléfono de Contacto</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Phone className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.phone || 'S/T'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Correo Electrónico</span>
+                        <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1"><Mail className="h-3.5 w-3.5 text-zinc-400" /> {selectedStudent.email || 'S/C'}</span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block">Padres / Tutores</span>
+                        <div className="mt-1 text-[11px] text-zinc-600 dark:text-zinc-300 leading-tight space-y-1">
+                          {selectedStudent.mother_name && <div>• <strong>Madre:</strong> {selectedStudent.mother_name}</div>}
+                          {selectedStudent.father_name && <div>• <strong>Padre:</strong> {selectedStudent.father_name}</div>}
+                          {selectedStudent.tutor_name && <div>• <strong>Tutor Legal:</strong> {selectedStudent.tutor_name}</div>}
+                        </div>
+                      </div>
+                      {(selectedStudent.emergency_contact_name || selectedStudent.emergency_contact_phone) && (
+                        <div className="border-t border-zinc-200/40 dark:border-zinc-800/40 pt-2 mt-2">
+                          <span className="text-[10px] font-black text-red-500 dark:text-red-400 uppercase block">Contacto de Emergencia</span>
+                          <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200 block">{selectedStudent.emergency_contact_name || 'S/N'}</span>
+                          <span className="text-[10.5px] text-zinc-500 block">{selectedStudent.emergency_contact_phone || 'S/T'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN 3: EXPEDIENTE MÉDICO Y ADMINISTRATIVO */}
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-black text-zinc-400 uppercase tracking-wider border-b pb-2 flex items-center gap-1.5">
+                      <Activity className="h-4 w-4 text-violet-500" />
+                      Expediente Escolar
+                    </h3>
+                    
+                    <div className="space-y-4">
+                      {/* Pagos Pendientes */}
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Pagos y Adeudos</span>
+                        {selectedStudent.pending_payments && selectedStudent.pending_payments.length > 0 ? (
+                          <div className="space-y-1.5">
+                            {selectedStudent.pending_payments.map((p, idx) => (
+                              <div key={idx} className="p-2 rounded bg-amber-50 dark:bg-amber-955/10 border border-amber-200/50 text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1.5">
+                                <span className="h-1.5 w-1.5 rounded-full bg-amber-500"></span>
+                                {p}
+                              </div>
+                            ))}
                           </div>
                         ) : (
-                          <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Ninguna alergia reportada</span>
+                          <div className="p-2 rounded bg-emerald-50 dark:bg-emerald-955/10 border border-emerald-200/50 text-[11px] font-bold text-emerald-700 dark:text-emerald-450 flex items-center gap-1.5">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                            Sin adeudos registrados.
+                          </div>
                         )}
                       </div>
-                    </div>
 
-                    {/* Notas Académicas de Coordinación */}
-                    <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
-                      <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Notas de Coordinación</span>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-300 italic leading-relaxed">
-                        {selectedStudent.academic_notes || "Sin notas académicas registradas en este expediente."}
-                      </p>
+                      {/* Reportes de Conducta */}
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Reportes de Conducta</span>
+                        {selectedStudent.behavior_reports && selectedStudent.behavior_reports.length > 0 ? (
+                          <div className="space-y-2">
+                            {selectedStudent.behavior_reports.map((r, idx) => (
+                              <div key={idx} className="p-2.5 rounded-xl bg-rose-50/80 dark:bg-rose-955/10 border border-rose-200/40 text-[10.5px]">
+                                <div className="flex justify-between font-bold text-rose-700 dark:text-rose-400 mb-1 text-[9.5px]">
+                                  <span>Reporta: {r.reporter}</span>
+                                  <span>{r.date}</span>
+                                </div>
+                                <p className="text-zinc-700 dark:text-zinc-300">{r.description}</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-zinc-500 italic">No cuenta con incidencias ni reportes disciplinarios.</p>
+                        )}
+                      </div>
+
+                      {/* Notas del Profesor */}
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1.5">Notas de Profesores</span>
+                        {selectedStudent.teacher_notes && selectedStudent.teacher_notes.length > 0 ? (
+                          <div className="space-y-2">
+                            {selectedStudent.teacher_notes.map((n, idx) => (
+                              <div key={idx} className="p-2.5 rounded-xl bg-violet-50/60 dark:bg-violet-955/10 border border-violet-200/30 text-[10.5px]">
+                                <div className="flex justify-between font-bold text-violet-700 dark:text-violet-400 mb-1 text-[9.5px]">
+                                  <span>Prof. {n.teacher_name}</span>
+                                  <span>{n.date}</span>
+                                </div>
+                                <p className="text-zinc-700 dark:text-zinc-300 italic">"{n.note}"</p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-zinc-500 italic">Sin anotaciones de maestros.</p>
+                        )}
+                      </div>
+
+                      {/* Médico */}
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase">Tipo de Sangre</span>
+                          <span className="px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400 text-xs font-extrabold">{selectedStudent.blood_type || 'S/D'}</span>
+                        </div>
+                        
+                        <div>
+                          <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Alergias / Restricciones Médicas</span>
+                          {selectedStudent.medical_notes ? (
+                            <div className="p-2.5 rounded-lg bg-red-50/80 border border-red-200/50 dark:bg-red-950/10 dark:border-red-900/30 text-red-700 dark:text-red-400 text-xs font-medium">
+                              {selectedStudent.medical_notes}
+                            </div>
+                          ) : (
+                            <span className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">Ninguna alergia reportada</span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Notas Académicas de Coordinación */}
+                      <div className="bg-zinc-50/50 dark:bg-zinc-950/10 p-4 rounded-2xl border border-zinc-100 dark:border-zinc-850">
+                        <span className="text-[10px] font-bold text-zinc-400 uppercase block mb-1">Notas de Coordinación</span>
+                        <p className="text-xs text-zinc-600 dark:text-zinc-300 italic leading-relaxed">
+                          {selectedStudent.academic_notes || "Sin notas académicas registradas en este expediente."}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
+              )}
 
-              </div>
+              {/* PESTAÑA: GESTIÓN DE INVENTARIO */}
+              {dossierTab === 'inventory' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Inventario del Alumno */}
+                  <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
+                    <h3 className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4">🎒 Artefactos en su Inventario</h3>
+                    
+                    <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto">
+                      {(studentInventoryMap[selectedStudent.id] || []).length === 0 ? (
+                        <p className="text-xs text-zinc-400 italic text-center py-8">Este alumno no posee artefactos en su inventario.</p>
+                      ) : (
+                        (studentInventoryMap[selectedStudent.id] || []).map((artId) => {
+                          const art = shopArtifacts.find(a => a.id === artId);
+                          if (!art) return null;
+                          const isRevoking = revokingArtifactId === artId;
+
+                          return (
+                            <div key={artId} className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-2xl flex flex-col gap-2.5 text-xs">
+                              <div className="flex justify-between items-center">
+                                <div>
+                                  <strong className="text-zinc-900 dark:text-white block font-bold">{art.name}</strong>
+                                  <span className="text-[10px] text-zinc-400 block">{art.description}</span>
+                                </div>
+                                {!isRevoking && (
+                                  <button
+                                    onClick={() => setRevokingArtifactId(artId)}
+                                    className="px-2.5 py-1 bg-rose-600 hover:bg-rose-500 text-white rounded-lg text-[9px] font-black uppercase transition-all"
+                                  >
+                                    Revocar
+                                  </button>
+                                )}
+                              </div>
+
+                              {isRevoking && (
+                                <div className="p-2.5 bg-rose-50/20 border border-rose-100 rounded-xl flex flex-col gap-2">
+                                  <label className="text-[9px] font-black text-rose-600 uppercase">Motivo del Retiro / Incidencia:</label>
+                                  <input
+                                    type="text"
+                                    required
+                                    placeholder="Ej. Incumplimiento o distracción reiterada en clase."
+                                    value={revocationReason}
+                                    onChange={(e) => setRevocationReason(e.target.value)}
+                                    className="w-full text-xs p-2 rounded-lg border border-rose-200 bg-white text-zinc-900 font-medium"
+                                  />
+                                  <div className="flex justify-end gap-2">
+                                    <button
+                                      onClick={() => { setRevokingArtifactId(null); setRevocationReason(''); }}
+                                      className="px-2 py-1 bg-zinc-200 hover:bg-zinc-350 text-zinc-700 rounded text-[9px] font-bold"
+                                    >
+                                      Cancelar
+                                    </button>
+                                    <button
+                                      disabled={!revocationReason.trim()}
+                                      onClick={() => {
+                                        revokeArtifact(selectedStudent.id, art.id, revocationReason);
+                                        setRevokingArtifactId(null);
+                                        setRevocationReason('');
+                                      }}
+                                      className="px-2.5 py-1 bg-rose-600 hover:bg-rose-550 text-white rounded text-[9px] font-bold disabled:opacity-40"
+                                    >
+                                      Confirmar Retiro
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Asignación Gratuita */}
+                  <div className="rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
+                    <h3 className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4">🎁 Otorgar Artefacto Especial</h3>
+                    
+                    <div className="flex flex-col gap-3 max-h-[350px] overflow-y-auto">
+                      {shopArtifacts
+                        .filter(art => !(studentInventoryMap[selectedStudent.id] || []).includes(art.id))
+                        .map((art) => (
+                          <div key={art.id} className="p-3 bg-zinc-50 dark:bg-zinc-950 border border-zinc-150 dark:border-zinc-850 rounded-2xl flex justify-between items-center text-xs">
+                            <div>
+                              <strong className="text-zinc-900 dark:text-white block font-bold">{art.name}</strong>
+                              <span className="text-[10px] text-zinc-400 block">{art.description}</span>
+                            </div>
+                            <button
+                              onClick={() => grantArtifact(selectedStudent.id, art.id)}
+                              className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase transition-all shrink-0"
+                            >
+                              Otorgar
+                            </button>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* PESTAÑA: DISEÑAR ARTEFACTO */}
+              {dossierTab === 'create_art' && (
+                <div className="max-w-xl mx-auto rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+                  <h3 className="text-xs font-black text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-4 border-b pb-2 flex items-center gap-1.5">
+                    <Wand2 className="h-4 w-4 text-purple-500" />
+                    Diseño de Nuevo Artefacto para la Tienda
+                  </h3>
+
+                  <div className="flex flex-col gap-4 text-xs font-semibold">
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Nombre del Artefacto:</label>
+                      <input
+                        type="text"
+                        required
+                        placeholder="Ej. Pergamino de la Razón"
+                        value={newArtName}
+                        onChange={(e) => setNewArtName(e.target.value)}
+                        className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent mt-1 text-zinc-900 dark:text-white font-bold"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Costo en Monedas:</label>
+                        <input
+                          type="number"
+                          min="5"
+                          max="500"
+                          value={newArtPrice}
+                          onChange={(e) => setNewArtPrice(parseInt(e.target.value) || 10)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent mt-1 text-zinc-900 dark:text-white font-bold"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-bold text-zinc-400 uppercase">Icono Visual:</label>
+                        <select
+                          value={newArtIcon}
+                          onChange={(e) => setNewArtIcon(e.target.value)}
+                          className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent dark:bg-zinc-900 mt-1 text-zinc-900 dark:text-white font-bold"
+                        >
+                          <option value="Shield">🛡️ Escudo</option>
+                          <option value="Heart">❤️ Corazón</option>
+                          <option value="Wand2">🪄 Báculo</option>
+                          <option value="Footprints">🥾 Botas</option>
+                          <option value="Scroll">📜 Pergamino</option>
+                          <option value="Dumbbell">⚔️ Amuleto/Arma</option>
+                          <option value="Gem">💎 Gema</option>
+                          <option value="Crown">👑 Corona</option>
+                          <option value="BookOpen">📖 Libro</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-[10px] font-bold text-zinc-400 uppercase">Descripción de Lore:</label>
+                      <textarea
+                        required
+                        placeholder="Describe la historia del artefacto y cómo ayuda al alumno."
+                        value={newArtDesc}
+                        onChange={(e) => setNewArtDesc(e.target.value)}
+                        className="w-full text-xs p-3 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-transparent mt-1 text-zinc-900 dark:text-white min-h-[80px]"
+                      />
+                      <span className="text-[9px] text-purple-650 dark:text-purple-400 font-bold block mt-1">Efecto Automático: Otorga +1 oportunidad retry en exámenes.</span>
+                    </div>
+
+                    <div className="flex justify-end gap-3 mt-2">
+                      <button
+                        disabled={!newArtName || !newArtDesc}
+                        onClick={() => {
+                          createArtifact({
+                            name: newArtName,
+                            price: newArtPrice,
+                            description: newArtDesc,
+                            icon: newArtIcon,
+                            effect: 'extra_attempt'
+                          });
+                          setNewArtName('');
+                          setNewArtDesc('');
+                          setNewArtPrice(25);
+                        }}
+                        className="px-5 py-2.5 bg-purple-600 hover:bg-purple-550 text-white rounded-full text-xs font-black uppercase transition-all shadow disabled:opacity-40"
+                      >
+                        Crear y Añadir a la Tienda
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
 
             {/* Pie de Modal */}

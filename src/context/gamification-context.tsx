@@ -22,7 +22,9 @@ import {
    SchoolSettings,
    Attendance,
    AttendanceStatus,
-   ParentMessage
+   ParentMessage,
+   ShopArtifact,
+   StudentMessage
  } from '../types';
  
  
@@ -115,11 +117,55 @@ import {
   
   linkPortfolioItemToQuest: (itemId: string, questId: string) => void;
   resetAllData: () => void;
+
+  // Shop & Inventory
+  shopArtifacts: ShopArtifact[];
+  studentInventoryMap: Record<string, string[]>;
+  studentMessages: StudentMessage[];
+  purchaseArtifact: (studentId: string, artifactId: string) => void;
+  grantArtifact: (studentId: string, artifactId: string) => void;
+  revokeArtifact: (studentId: string, artifactId: string, reason: string) => void;
+  createArtifact: (artifactData: Omit<ShopArtifact, 'id'>) => void;
+  markStudentMessageAsRead: (messageId: string) => void;
 }
 
 const GamificationContext = createContext<GamificationContextProps | undefined>(undefined);
 
 // --- SEED DATA ---
+
+const DEFAULT_ARTIFACTS_SEED: ShopArtifact[] = [
+  { id: 'art-boots', name: 'Botas de Velocidad Escolar', description: 'Te permiten esquivar preguntas capciosas.', price: 10, icon: 'Footprints', effect: 'extra_attempt' },
+  { id: 'art-shield', name: 'Escudo de Concentración', description: 'Bloquea las distracciones externas.', price: 15, icon: 'Shield', effect: 'extra_attempt' },
+  { id: 'art-pen', name: 'Pluma de Fénix Escrita', description: 'Corrige automáticamente faltas de ortografía.', price: 20, icon: 'PenTool', effect: 'extra_attempt' },
+  { id: 'art-potion', name: 'Poción de Enfoque', description: 'Restaura tu energía mental durante un examen.', price: 25, icon: 'Wine', effect: 'extra_attempt' },
+  { id: 'art-scroll', name: 'Pergamino de Sabiduría', description: 'Revela la pista secreta de cualquier misión.', price: 30, icon: 'Scroll', effect: 'extra_attempt' },
+  { id: 'art-dumbbell', name: 'Amuleto del Matemago', description: 'Duplica el daño contra enemigos de Matemáticas.', price: 35, icon: 'Dumbbell', effect: 'extra_attempt' },
+  { id: 'art-water', name: 'Elixir de la Memoria', description: 'Te permite recordar una respuesta incorrecta.', price: 40, icon: 'GlassWater', effect: 'extra_attempt' },
+  { id: 'art-ring', name: 'Anillo del Pensamiento Crítico', description: 'Aumenta tu inteligencia en +2 puntos.', price: 50, icon: 'Sparkles', effect: 'extra_attempt' },
+  { id: 'art-cape', name: 'Capa del Gremio', description: 'Aumenta la defensa del grupo en +3 puntos.', price: 60, icon: 'Shirt', effect: 'extra_attempt' },
+  { id: 'art-wand', name: 'Báculo del Saber', description: 'Dispara rayos de lógica pura que infligen daño.', price: 75, icon: 'Wand2', effect: 'extra_attempt' },
+  { id: 'art-gem', name: 'Gema de la Sincronía', description: 'Permite realizar el Ataque Sincronizado.', price: 90, icon: 'Gem', effect: 'extra_attempt' },
+  { id: 'art-clock', name: 'Reloj de Arena Escolar', description: 'Te da tiempo extra para cualquier examen.', price: 110, icon: 'Clock', effect: 'extra_attempt' },
+  { id: 'art-crown', name: 'Corona del Innovador', description: 'Otorga un 10% adicional de créditos.', price: 130, icon: 'Crown', effect: 'extra_attempt' },
+  { id: 'art-book', name: 'Libro de las Eras', description: 'Contiene las respuestas de los guardianes.', price: 150, icon: 'BookOpen', effect: 'extra_attempt' },
+  { id: 'art-heart', name: 'Cristal de la Segunda Oportunidad', description: 'Un poderoso cristal que otorga un intento extra.', price: 200, icon: 'Heart', effect: 'extra_attempt' }
+];
+
+const STUDENT_INVENTORY_SEED: Record<string, string[]> = {
+  'std-sec': ['art-boots'],
+  'std-prep': ['art-shield']
+};
+
+const STUDENT_MESSAGES_SEED: StudentMessage[] = [
+  {
+    id: 'smsg-1',
+    student_id: 'std-sec',
+    title: '⚠️ Bienvenido al Gremio de Héroes',
+    message: 'Se te han otorgado las Botas de Velocidad Escolar por tu excelente inicio en Secundaria.',
+    sent_at: new Date().toISOString(),
+    is_read: false
+  }
+];
 
 const SUBJECTS_SEED: Subject[] = [
   { id: 'sub-math', school_id: 'sch-1', level_grade_id: 'lg-4', name: 'Matemáticas', sep_code: 'MAT-4A', created_at: new Date().toISOString() },
@@ -948,6 +994,30 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return GUILD_SUBMISSIONS_SEED;
   });
 
+  const [shopArtifacts, setShopArtifacts] = useState<ShopArtifact[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_shop_artifacts');
+      return saved ? JSON.parse(saved) : DEFAULT_ARTIFACTS_SEED;
+    }
+    return DEFAULT_ARTIFACTS_SEED;
+  });
+
+  const [studentInventoryMap, setStudentInventoryMap] = useState<Record<string, string[]>>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_student_inventory');
+      return saved ? JSON.parse(saved) : STUDENT_INVENTORY_SEED;
+    }
+    return STUDENT_INVENTORY_SEED;
+  });
+
+  const [studentMessages, setStudentMessages] = useState<StudentMessage[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('iskool_student_messages');
+      return saved ? JSON.parse(saved) : STUDENT_MESSAGES_SEED;
+    }
+    return STUDENT_MESSAGES_SEED;
+  });
+
   // Estados del Coordinador
   const [detailedStudents, setDetailedStudents] = useState<DetailedStudent[]>(() => {
     if (typeof window !== 'undefined') {
@@ -1058,6 +1128,18 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
   useEffect(() => {
     localStorage.setItem('iskool_missions_list', JSON.stringify(missionsList));
   }, [missionsList]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_shop_artifacts', JSON.stringify(shopArtifacts));
+  }, [shopArtifacts]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_student_inventory', JSON.stringify(studentInventoryMap));
+  }, [studentInventoryMap]);
+
+  useEffect(() => {
+    localStorage.setItem('iskool_student_messages', JSON.stringify(studentMessages));
+  }, [studentMessages]);
 
   // Lógica RPG Combate Colaborativo
   const triggerGuildAttack = (damage: number) => {
@@ -1975,6 +2057,118 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setSchedulesList(prev => prev.filter(s => s.groupId !== groupId));
   };
 
+  // Shop & Inventory methods
+  const purchaseArtifact = (studentId: string, artifactId: string) => {
+    const artifact = shopArtifacts.find(a => a.id === artifactId);
+    if (!artifact) return;
+
+    const s = allStats[studentId];
+    if (!s) return;
+
+    if (s.coins < artifact.price) {
+      alert("¡No tienes suficientes monedas!");
+      return;
+    }
+
+    const currentInventory = studentInventoryMap[studentId] || [];
+    if (currentInventory.includes(artifactId)) {
+      alert("¡Ya posees este artefacto!");
+      return;
+    }
+
+    // Deduct coins
+    setAllStats(prev => ({
+      ...prev,
+      [studentId]: {
+        ...s,
+        coins: s.coins - artifact.price,
+        updated_at: new Date().toISOString()
+      }
+    }));
+
+    // Add to inventory
+    setStudentInventoryMap(prev => ({
+      ...prev,
+      [studentId]: [...(prev[studentId] || []), artifactId]
+    }));
+
+    // Create message notification
+    const newMessage: StudentMessage = {
+      id: `smsg-${Date.now()}`,
+      student_id: studentId,
+      title: '🎁 Compra de Artefacto',
+      message: `Has comprado el artefacto "${artifact.name}" por ${artifact.price} monedas. ¡Ahora tienes una oportunidad extra en exámenes!`,
+      sent_at: new Date().toISOString(),
+      is_read: false
+    };
+    setStudentMessages(prev => [newMessage, ...prev]);
+    alert(`¡Compraste ${artifact.name} con éxito!`);
+  };
+
+  const grantArtifact = (studentId: string, artifactId: string) => {
+    const artifact = shopArtifacts.find(a => a.id === artifactId);
+    if (!artifact) return;
+
+    const currentInventory = studentInventoryMap[studentId] || [];
+    if (currentInventory.includes(artifactId)) {
+      alert("El alumno ya posee este artefacto.");
+      return;
+    }
+
+    setStudentInventoryMap(prev => ({
+      ...prev,
+      [studentId]: [...(prev[studentId] || []), artifactId]
+    }));
+
+    const newMessage: StudentMessage = {
+      id: `smsg-${Date.now()}`,
+      student_id: studentId,
+      title: '🎁 Artefacto Otorgado',
+      message: `El profesor te ha otorgado el artefacto "${artifact.name}". ¡Se ha añadido a tu inventario!`,
+      sent_at: new Date().toISOString(),
+      is_read: false
+    };
+    setStudentMessages(prev => [newMessage, ...prev]);
+    alert("Artefacto otorgado con éxito.");
+  };
+
+  const revokeArtifact = (studentId: string, artifactId: string, reason: string) => {
+    const artifact = shopArtifacts.find(a => a.id === artifactId);
+    if (!artifact) return;
+
+    setStudentInventoryMap(prev => ({
+      ...prev,
+      [studentId]: (prev[studentId] || []).filter(id => id !== artifactId)
+    }));
+
+    const newMessage: StudentMessage = {
+      id: `smsg-${Date.now()}`,
+      student_id: studentId,
+      title: '⚠️ Artefacto Retirado',
+      message: `Se te ha retirado el artefacto "${artifact.name}". Motivo: ${reason}`,
+      sent_at: new Date().toISOString(),
+      is_read: false,
+      type: 'revocation',
+      revoked_artifact: artifact.name,
+      reason: reason
+    };
+    setStudentMessages(prev => [newMessage, ...prev]);
+    alert("Artefacto retirado e informe enviado al alumno.");
+  };
+
+  const createArtifact = (artifactData: Omit<ShopArtifact, 'id'>) => {
+    const newArtifact: ShopArtifact = {
+      ...artifactData,
+      id: `art-${Date.now()}`
+    };
+    setShopArtifacts(prev => [...prev, newArtifact]);
+    alert(`Artefacto "${newArtifact.name}" creado con éxito.`);
+  };
+
+  const markStudentMessageAsRead = (messageId: string) => {
+    setStudentMessages(prev => prev.map(msg => msg.id === messageId ? { ...msg, is_read: true } : msg));
+  };
+
   // Reiniciar
   const resetAllData = () => {
     // 1. Limpiar localStorage
@@ -1992,6 +2186,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.removeItem('iskool_attendance_list');
     localStorage.removeItem('iskool_parent_messages');
     localStorage.removeItem('iskool_missions_list');
+    localStorage.removeItem('iskool_shop_artifacts');
+    localStorage.removeItem('iskool_student_inventory');
+    localStorage.removeItem('iskool_student_messages');
 
     // 2. Escribir las semillas directamente en localStorage de forma síncrona
     localStorage.setItem('iskool_all_stats', JSON.stringify(STATS_MAP_SEED));
@@ -2011,6 +2208,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     localStorage.setItem('iskool_guild_boss', JSON.stringify(BOSS_SEED));
     localStorage.setItem('iskool_guild_submissions', JSON.stringify(GUILD_SUBMISSIONS_SEED));
     localStorage.setItem('iskool_active_student_id', 'std-pa');
+    localStorage.setItem('iskool_shop_artifacts', JSON.stringify(DEFAULT_ARTIFACTS_SEED));
+    localStorage.setItem('iskool_student_inventory', JSON.stringify(STUDENT_INVENTORY_SEED));
+    localStorage.setItem('iskool_student_messages', JSON.stringify(STUDENT_MESSAGES_SEED));
 
     // 3. Actualizar estados locales de React
     setActiveStudentId('std-pa');
@@ -2030,6 +2230,9 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     setAttendanceList(ATTENDANCE_SEED);
     setParentMessages(PARENT_MESSAGES_SEED);
     setMissionsList(MISSIONS_SEED);
+    setShopArtifacts(DEFAULT_ARTIFACTS_SEED);
+    setStudentInventoryMap(STUDENT_INVENTORY_SEED);
+    setStudentMessages(STUDENT_MESSAGES_SEED);
     setSchoolSettings({
       isConfigured: false,
       name: 'Colegio Anglo Mexicano',
@@ -2124,7 +2327,16 @@ export const GamificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
       levelUpAttribute,
       submitPeerReview,
       
-      resetAllData
+      resetAllData,
+
+      shopArtifacts,
+      studentInventoryMap,
+      studentMessages,
+      purchaseArtifact,
+      grantArtifact,
+      revokeArtifact,
+      createArtifact,
+      markStudentMessageAsRead
     }}>
       {children}
     </GamificationContext.Provider>

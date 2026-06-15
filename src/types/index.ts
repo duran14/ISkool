@@ -428,7 +428,24 @@ export interface ParentMessage {
   replied_at?: string;
 }
 
+export interface ShopArtifact {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  icon: string; // "Footprints" | "Shield" | "PenTool" | "Wine" | "Scroll" | "Dumbbell" | "GlassWater" | "Sparkles" | "Shirt" | "Wand2" | "Gem" | "Clock" | "Crown" | "BookOpen" | "Heart"
+  effect: string;
+  created_by?: string;
+}
 
-
-
-
+export interface StudentMessage {
+  id: string;
+  student_id: string;
+  title: string;
+  message: string;
+  sent_at: string;
+  is_read: boolean;
+  type?: 'general' | 'revocation';
+  revoked_artifact?: string;
+  reason?: string;
+}
