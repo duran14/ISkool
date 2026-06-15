@@ -176,6 +176,12 @@ export interface StudentAvatar {
   pet_hunger?: number;
   pet_happiness?: number;
   pet_outfit?: string;
+
+  // RPG Customizer fields
+  gender?: 'male' | 'female';
+  rpg_class?: string;
+  head_type?: string;
+  skin_tone?: string;
 }
 
 export type BadgeCategory = 'academic' | 'social' | 'persistence' | 'creative';

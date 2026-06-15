@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useGamification } from '@/context/gamification-context';
+import { AnimeAvatarSprite } from './AnimeAvatarSprite';
 import { 
   Volume2, VolumeX, Shield, Swords, Sparkles, HelpCircle, 
   Briefcase, Zap, RotateCcw, Award, Heart, Brain, Play, RefreshCw, AlertCircle
@@ -344,6 +345,7 @@ export function RpgCombatViewport() {
     questAttempts, 
     submitExam, 
     stats, 
+    avatar,
     activeStudentId, 
     studentInventoryMap,
     shopArtifacts
@@ -778,140 +780,16 @@ export function RpgCombatViewport() {
             {/* Elena (Mage) */}
             <div className={`flex items-center gap-3 relative jrpg-idle ${combatState === 'player_attack' ? 'translate-x-12 scale-110 duration-200' : 'duration-500'}`}>
               <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-800 to-indigo-900 p-0.5 border border-purple-500/40 relative shadow-lg shadow-purple-950/30">
-                <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-                  {/* Shadow */}
-                  <ellipse cx="50" cy="88" rx="28" ry="5" fill="#000" opacity="0.35" />
-                  
-                  {/* Anime Cape (Back) */}
-                  <path d="M 30 55 C 20 62, 16 82, 18 87 C 32 87, 34 72, 34 55" fill="#310D4A" />
-                  <path d="M 70 55 C 80 62, 84 82, 82 87 C 68 87, 66 72, 66 55" fill="#310D4A" />
-
-                  {/* Robe / Tunic */}
-                  <path d="M 28 85 L 36 52 Q 50 45 64 52 L 72 85 Q 50 90 28 85 Z" fill="#581C87" stroke="#7E22CE" strokeWidth="1" />
-                  <path d="M 45 50 L 50 87 L 55 50 Z" fill="#FBBF24" /> {/* Gold center trim */}
-                  
-                  {/* Amulet */}
-                  <circle cx="50" cy="54" r="3.5" fill="#06B6D4" stroke="#22D3EE" strokeWidth="0.8" className="animate-pulse" />
-
-                  {/* Face & Neck */}
-                  <path d="M 46 54 L 46 48 L 54 48 L 54 54 Z" fill="#FED7AA" />
-                  <path d="M 35 34 C 35 34, 34 48, 50 56 C 66 48, 65 34, 65 34 Z" fill="#FED7AA" stroke="#FDBA74" strokeWidth="0.5" />
-                  
-                  {/* Cute Anime Blush */}
-                  <ellipse cx="40" cy="46" rx="2.5" ry="1.2" fill="#F43F5E" opacity="0.45" />
-                  <ellipse cx="60" cy="46" rx="2.5" ry="1.2" fill="#F43F5E" opacity="0.45" />
-
-                  {/* Large Expressive Anime Eyes */}
-                  <g id="anime-eyes">
-                    <ellipse cx="42" cy="42" rx="3.5" ry="5.5" fill="#BE185D" />
-                    <ellipse cx="42" cy="41" rx="2" ry="3.5" fill="#DB2777" />
-                    <circle cx="41" cy="39" r="1.2" fill="#FFF" />
-                    <circle cx="43.5" cy="43" r="0.6" fill="#FFF" />
-                    
-                    <ellipse cx="58" cy="42" rx="3.5" ry="5.5" fill="#BE185D" />
-                    <ellipse cx="58" cy="41" rx="2" ry="3.5" fill="#DB2777" />
-                    <circle cx="57" cy="39" r="1.2" fill="#FFF" />
-                    <circle cx="59.5" cy="43" r="0.6" fill="#FFF" />
-                    
-                    {/* Eyebrows & Lashes */}
-                    <path d="M 37 36 Q 42 34 46 37" stroke="#4A044E" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                    <path d="M 54 36 Q 58 34 63 37" stroke="#4A044E" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                    <path d="M 37 39 Q 42 38 46 41" stroke="#000" strokeWidth="1.2" fill="none" />
-                    <path d="M 63 39 Q 58 38 54 41" stroke="#000" strokeWidth="1.2" fill="none" />
-                  </g>
-                  
-                  {/* Smile */}
-                  <path d="M 48 49 Q 50 51.5 52 49" stroke="#991B1B" strokeWidth="1" fill="none" strokeLinecap="round" />
-                  
-                  {/* Pink Anime Hair - Bangs & Side Locks */}
-                  <g id="anime-hair">
-                    <path d="M 35 34 C 32 30, 24 45, 23 68 C 28 68, 30 55, 33 42" fill="#EC4899" />
-                    <path d="M 65 34 C 68 30, 76 45, 77 68 C 72 68, 70 55, 67 42" fill="#EC4899" />
-                    {/* Center bangs */}
-                    <path d="M 46 30 Q 50 43 51 43 Q 52 43 54 30 Z" fill="#F472B6" />
-                    <path d="M 37 32 Q 44 41 45 41 Q 45 32 46 30 Z" fill="#F472B6" />
-                    <path d="M 63 32 Q 56 41 55 41 Q 55 32 54 30 Z" fill="#F472B6" />
-                  </g>
-
-                  {/* Elegant Witch Hat */}
-                  <g id="wizard-hat">
-                    <path d="M 20 28 C 20 28, 50 18, 80 28 C 80 28, 70 8, 50 0 L 20 28 Z" fill="#6B21A8" stroke="#A855F7" strokeWidth="0.8" />
-                    <ellipse cx="50" cy="28" rx="33" ry="4.5" fill="#581C87" stroke="#A855F7" strokeWidth="0.8" />
-                    {/* Hat Band */}
-                    <path d="M 33 26 C 42 24, 58 24, 67 26 L 68 28 C 59 26, 41 26, 32 28 Z" fill="#FDE047" />
-                    <rect x="47" y="23" width="6" height="5" fill="#D97706" rx="1" />
-                  </g>
-                  
-                  {/* Mage Staff */}
-                  <g id="mage-staff">
-                    <line x1="69" y1="85" x2="69" y2="35" stroke="#78350F" strokeWidth="2.5" strokeLinecap="round" />
-                    {/* Glowing Crystal Ball */}
-                    <circle cx="69" cy="30" r="5" fill="#22D3EE" stroke="#E0F7FA" strokeWidth="0.8" className="animate-pulse" />
-                    {/* Orbiting magic ring */}
-                    <ellipse cx="69" cy="30" rx="9" ry="2" fill="none" stroke="#22D3EE" strokeWidth="0.8" transform="rotate(-20 69 30)" opacity="0.7" className="animate-spin" />
-                  </g>
-
-                  {/* EQUIPPED ARTIFACTS DYNAMIC SVG OVERLAYS */}
-                  {ownedArtifactIds.includes('art-boots') && (
-                    <g id="equipped-boots">
-                      {/* Left Winged Boot */}
-                      <path d="M 23 80 L 29 80 L 29 86 L 21 86 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="0.8" />
-                      <path d="M 17 78 Q 23 80 20 84 Q 16 82 17 78 Z" fill="#FFFFFF" opacity="0.95" stroke="#E2E8F0" strokeWidth="0.5" />
-                      {/* Right Winged Boot */}
-                      <path d="M 69 80 L 75 80 L 73 86 L 67 86 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="0.8" />
-                      <path d="M 77 78 Q 71 80 74 84 Q 78 82 77 78 Z" fill="#FFFFFF" opacity="0.95" stroke="#E2E8F0" strokeWidth="0.5" />
-                    </g>
-                  )}
-
-                  {ownedArtifactIds.includes('art-shield') && (
-                    <g id="equipped-shield" className="animate-pulse">
-                      {/* Protective Magic Shield floating on the left */}
-                      <polygon points="12,56 22,52 24,66 18,74 12,66" fill="#3B82F6" stroke="#93C5FD" strokeWidth="1" opacity="0.85" />
-                      <polygon points="14,58 20,55 22,64 17,70 14,64" fill="#60A5FA" opacity="0.9" />
-                      <path d="M 15 62 L 20 62" stroke="#FFFFFF" strokeWidth="0.8" />
-                      <path d="M 17 60 L 17 65" stroke="#FFFFFF" strokeWidth="0.8" />
-                    </g>
-                  )}
-
-                  {ownedArtifactIds.includes('art-pen') && (
-                    <g id="equipped-feather">
-                      {/* Phoenix red feather in hat */}
-                      <path d="M 40 24 Q 32 12 30 6 Q 36 10 40 18 Z" fill="#EF4444" stroke="#F59E0B" strokeWidth="0.5" />
-                      <path d="M 39 24 Q 33 14 32 8" stroke="#FFF" strokeWidth="0.5" fill="none" />
-                    </g>
-                  )}
-
-                  {ownedArtifactIds.includes('art-potion') && (
-                    <g id="equipped-potion">
-                      {/* Focus Potion belt vial */}
-                      <rect x="33" y="58" width="4" height="6" rx="1" fill="#10B981" stroke="#047857" strokeWidth="0.5" />
-                      <rect x="34" y="56" width="2" height="2" fill="#78350F" />
-                      <circle cx="35" cy="60" r="0.8" fill="#FFF" opacity="0.8" />
-                    </g>
-                  )}
-
-                  {ownedArtifactIds.includes('art-crown') && (
-                    <g id="equipped-crown" transform="translate(36, -8) scale(0.28)" className="animate-bounce">
-                      {/* Crown hovering above hat tip */}
-                      <polygon points="10,25 25,5 40,25 32,32 18,32" fill="#FDE047" stroke="#D97706" strokeWidth="1.5" />
-                      <circle cx="25" cy="5" r="2.5" fill="#EF4444" />
-                      <circle cx="10" cy="25" r="2" fill="#3B82F6" />
-                      <circle cx="40" cy="25" r="2" fill="#3B82F6" />
-                    </g>
-                  )}
-
-                  {ownedArtifactIds.includes('art-book') && (
-                    <g id="equipped-book" transform="translate(9, 36) scale(0.35)" className="animate-pulse">
-                      {/* Open spellbook floating near left side */}
-                      <path d="M 5 5 L 20 2 L 35 5 L 35 25 L 20 22 L 5 25 Z" fill="#78350F" stroke="#FBBF24" strokeWidth="1" />
-                      <path d="M 8 7 L 20 4 L 32 7 L 32 23 L 20 20 L 8 23 Z" fill="#FEF3C7" />
-                      <line x1="12" y1="10" x2="18" y2="8" stroke="#000" strokeWidth="0.8" />
-                      <line x1="12" y1="14" x2="18" y2="12" stroke="#000" strokeWidth="0.8" />
-                      <line x1="22" y1="8" x2="28" y2="10" stroke="#000" strokeWidth="0.8" />
-                      <line x1="22" y1="12" x2="28" y2="14" stroke="#000" strokeWidth="0.8" />
-                    </g>
-                  )}
-                </svg>
+                <AnimeAvatarSprite 
+                  gender={avatar.gender || 'female'}
+                  rpgClass={avatar.rpg_class || 'mago'}
+                  headType={avatar.head_type || 'standard'}
+                  skinTone={avatar.skin_tone || 'light'}
+                  hairColor={avatar.hair_color || 'pink'}
+                  hairStyle={avatar.hair_style || 'hat'}
+                  equippedArtifacts={ownedArtifactIds}
+                  className="w-full h-full"
+                />
                 {/* Visualizador de HP */}
                 <div className="absolute -bottom-1 left-0 right-0 h-1.5 bg-zinc-950 border border-zinc-800 rounded-full overflow-hidden">
                   <div className="h-full bg-purple-500" style={{ width: `${playerHp}%` }} />

@@ -515,12 +515,24 @@ export default function StudentDashboard() {
                 </div>
               </div>
 
-              {/* Botón de la Tienda de Artefactos */}
-              <div className="flex flex-col gap-2">
+              {/* Botón de la Tienda de Artefactos y Personalización */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                <Link
+                  id="rpg-avatar-edit-button"
+                  href="/student/avatar"
+                  className="relative group overflow-hidden px-6 py-4 bg-gradient-to-r from-purple-600 via-indigo-600 to-purple-700 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-purple-950/20 transition-all duration-300 border border-purple-500/35 active:scale-95 flex flex-col items-center gap-1.5 min-w-[140px]"
+                >
+                  <span className="text-2xl">🧙‍♂️</span>
+                  <span className="relative z-10 flex items-center gap-2">
+                    Edita tu Avatar
+                  </span>
+                  <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+                </Link>
+
                 <Link
                   id="rpg-shop-banner-button"
                   href="/student/shop"
-                  className="relative group overflow-hidden px-6 py-4 bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-amber-950/20 transition-all duration-300 border border-yellow-400/30 active:scale-95 flex flex-col items-center gap-1.5"
+                  className="relative group overflow-hidden px-6 py-4 bg-gradient-to-r from-yellow-500 via-amber-500 to-yellow-600 hover:from-yellow-400 hover:to-amber-500 text-zinc-950 font-black text-xs uppercase tracking-wider rounded-2xl shadow-xl shadow-amber-950/20 transition-all duration-300 border border-yellow-400/30 active:scale-95 flex flex-col items-center gap-1.5 min-w-[140px]"
                 >
                   <span className="text-2xl">🏬</span>
                   <span className="relative z-10 flex items-center gap-2">
