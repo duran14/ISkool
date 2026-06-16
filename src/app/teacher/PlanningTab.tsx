@@ -429,85 +429,306 @@ Debes responder ÚNICAMENTE con un objeto JSON válido, estructurado exactamente
 
   // --- Generador Heurístico Local ---
   const generateLocalNEMPlanning = (promptText: string, level: string, subject: string) => {
-    // Normalizar texto
     const searchStr = promptText.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    
-    let dbKey = 'ciencias'; // Default
-    if (subject === 'matematicas' || searchStr.includes('fraccion') || searchStr.includes('numero') || searchStr.includes('algebra') || searchStr.includes('matematica') || searchStr.includes('ecuacion') || searchStr.includes('geometria')) {
-      dbKey = 'matematicas';
-    } else if (subject === 'lenguajes' || searchStr.includes('poe') || searchStr.includes('leyenda') || searchStr.includes('lectura') || searchStr.includes('escribir') || searchStr.includes('redac') || searchStr.includes('espanol') || searchStr.includes('carta') || searchStr.includes('comunic')) {
-      dbKey = 'lenguajes';
-    }
+    const capitalizedTopic = promptText.charAt(0).toUpperCase() + promptText.slice(1).trim();
 
-    const hasSpecificContent = NEM_CURRICULUM_DATABASE[dbKey]?.[level];
-    let content: NemContent;
+    // ── 1. Detectar categoría temática ──
+    const isEcology    = /ecosistem|biodiversid|medio\s?ambiente|planta|animal|clima|contaminac|naturaleza|bosque|agua|suelo|recicl|sustentab|calentamiento/.test(searchStr);
+    const isHealth     = /salud|nutricion|alimentac|cuerpo|higiene|enfermedad|ejercicio|deporte|vacuna|primera\s?aid|medicina|covid|pandemia/.test(searchStr);
+    const isHistory    = /histori|revolucion|guerra|colonia|independencia|prehispanico|azteca|maya|reform|republica|cultura|civilizac/.test(searchStr);
+    const isArt        = /arte|pintura|musica|danza|teatro|literatura|poesia|escultura|dibujo|fotografia|cine|expresion/.test(searchStr);
+    const isTech       = /tecnolog|robot|computad|internet|program|codigo|digital|ia\b|inteligencia artificial|red|app|software/.test(searchStr);
+    const isMath       = /fraccion|numero|algebra|ecuacion|geometria|estadistica|probabilidad|calculo|proporcion|porcentaje|vector|trigono/.test(searchStr);
+    const isCivics     = /ciudadan|democracia|derecho|justicia|paz|inclusion|diversidad|igualdad|genero|comunidad|convivencia|etica|valor/.test(searchStr);
+    const isLanguage   = /poe|leyenda|lectura|escribir|redac|espanol|carta|comunic|texto|narrat|argumen|gramatic|ortografia|sinonimo/.test(searchStr);
+    const isSocial     = /geografia|region|pais|mundo|globalizac|economia|comercio|mercado|poblacion|migrac|familia|sociedad/.test(searchStr);
 
-    if (hasSpecificContent && (searchStr.includes('fraccion') || searchStr.includes('biodigestor') || searchStr.includes('leyenda') || searchStr.includes('poe') || searchStr.includes('agua') || searchStr.includes('algebra') || searchStr.includes('clima') || searchStr.includes('germina'))) {
-      content = NEM_CURRICULUM_DATABASE[dbKey][level];
-    } else {
-      // Compilar planeación dinámica con el tema del usuario
-      const capitalizedTopic = promptText.charAt(0).toUpperCase() + promptText.slice(1);
+    const campos = {
+      'matematicas': 'Saberes y Pensamiento Científico',
+      'ciencias':    isEcology ? 'Ética, Naturaleza y Sociedades' : 'Saberes y Pensamiento Científico',
+      'lenguajes':   'Lenguajes'
+    };
+    const campo = campos[subject as keyof typeof campos] || (isHistory || isCivics ? 'Ética, Naturaleza y Sociedades' : isArt || isLanguage ? 'Lenguajes' : 'De lo Humano y lo Comunitario');
+
+    // ── 2. Generar ejes articuladores según tema ──
+    let ejes: string[] = [];
+    if (isEcology)    ejes = ['Vida Saludable', 'Pensamiento Crítico'];
+    else if (isHealth) ejes = ['Vida Saludable', 'Inclusión'];
+    else if (isHistory) ejes = ['Interculturalidad Crítica', 'Pensamiento Crítico'];
+    else if (isArt)   ejes = ['Artes y Experiencias Estéticas', 'Inclusión'];
+    else if (isTech)  ejes = ['Pensamiento Crítico', 'Igualdad de Género'];
+    else if (isCivics) ejes = ['Inclusión', 'Vida Saludable'];
+    else if (isMath)  ejes = ['Pensamiento Crítico', 'Igualdad de Género'];
+    else if (isLanguage) ejes = ['Apropiación de las Culturas a través de la Lectura y la Escritura', 'Pensamiento Crítico'];
+    else if (isSocial) ejes = ['Interculturalidad Crítica', 'Pensamiento Crítico'];
+    else               ejes = ['Pensamiento Crítico', 'Vida Saludable'];
+
+    // ── 3. PDA por nivel y categoría ──
+    const pdaMap: Record<string, Record<string, string>> = {
+      'primaria-baja': {
+        ecology:   `Fase 3 - Reconoce la importancia de "${capitalizedTopic}" en su entorno inmediato, observa e identifica sus características mediante exploración sensorial y elabora registros gráficos de sus hallazgos.`,
+        health:    `Fase 3 - Identifica hábitos saludables relacionados con "${capitalizedTopic}" que contribuyen a su bienestar y al de su familia, y los practica en la vida cotidiana de la escuela.`,
+        history:   `Fase 3 - Reconoce elementos básicos de "${capitalizedTopic}" como parte de la memoria colectiva de su comunidad a través de relatos, imágenes y testimonios sencillos.`,
+        art:       `Fase 3 - Explora y experimenta con elementos de "${capitalizedTopic}" a través de la creación artística libre, expresando ideas y emociones propias.`,
+        tech:      `Fase 3 - Identifica usos cotidianos de "${capitalizedTopic}" y explora herramientas digitales básicas como instrumentos para aprender y comunicarse.`,
+        math:      `Fase 3 - Comprende y aplica conceptos de "${capitalizedTopic}" en situaciones concretas y cotidianas utilizando material manipulable y representaciones gráficas.`,
+        civics:    `Fase 3 - Reconoce la importancia de "${capitalizedTopic}" para la convivencia respetuosa en el aula y la escuela, y practica acuerdos de grupo.`,
+        language:  `Fase 3 - Comprende y produce textos sencillos relacionados con "${capitalizedTopic}", identificando su propósito comunicativo y elementos básicos.`,
+        social:    `Fase 3 - Identifica características de "${capitalizedTopic}" en su comunidad y región a través de mapas, ilustraciones y conversaciones con su entorno familiar.`,
+        default:   `Fase 3 - Identifica y describe con sus palabras las principales características de "${capitalizedTopic}" en su contexto escolar y comunitario, registrando sus observaciones de forma gráfica.`
+      },
+      'primaria-alta': {
+        ecology:   `Fase 5 - Analiza el impacto de "${capitalizedTopic}" en los ecosistemas locales, plantea hipótesis sobre sus causas y consecuencias, y diseña propuestas de acción sustentable en su comunidad.`,
+        health:    `Fase 5 - Investiga la relación entre "${capitalizedTopic}" y la salud pública, analiza datos estadísticos sencillos y propone campañas informativas para su escuela.`,
+        history:   `Fase 5 - Investiga causas y consecuencias de "${capitalizedTopic}" en el contexto nacional y regional, y elabora líneas del tiempo, mapas históricos y textos argumentativos.`,
+        art:       `Fase 5 - Investiga los elementos y contextos de "${capitalizedTopic}", analiza obras representativas y crea producciones artísticas originales integrando técnicas y estilos aprendidos.`,
+        tech:      `Fase 5 - Analiza el impacto social y ético de "${capitalizedTopic}" en la vida cotidiana, y diseña un proyecto colaborativo usando herramientas digitales disponibles.`,
+        math:      `Fase 5 - Resuelve problemas contextualizados aplicando conceptos de "${capitalizedTopic}", y representa soluciones de manera gráfica, numérica y algebraica.`,
+        civics:    `Fase 5 - Analiza situaciones de la vida real vinculadas a "${capitalizedTopic}", debate su importancia democrática y diseña acciones colectivas de mejora comunitaria.`,
+        language:  `Fase 5 - Analiza, produce y comparte textos complejos sobre "${capitalizedTopic}", aplicando estrategias de comprensión lectora y de escritura formal para audiencias específicas.`,
+        social:    `Fase 5 - Investiga características socioeconómicas y geográficas de "${capitalizedTopic}" en México y el mundo, y elabora reportes con datos estadísticos y cartografía.`,
+        default:   `Fase 5 - Investiga y sistematiza información sobre "${capitalizedTopic}", identifica sus implicaciones en la sociedad y el entorno, y propone alternativas creativas y fundamentadas.`
+      },
+      'secundaria': {
+        ecology:   `Fase 6 - Evalúa críticamente el impacto de "${capitalizedTopic}" en los ecosistemas, aplica conceptos científicos para analizar datos ambientales reales y propone estrategias de intervención comunitaria sustentable.`,
+        health:    `Fase 6 - Analiza científicamente los factores de riesgo y protección relacionados con "${capitalizedTopic}", interpreta datos epidemiológicos y diseña estrategias de prevención argumentadas.`,
+        history:   `Fase 6 - Analiza críticamente "${capitalizedTopic}" desde múltiples perspectivas históricas y sociales, evalúa fuentes primarias y secundarias, y elabora ensayos argumentativos sobre su vigencia.`,
+        art:       `Fase 6 - Analiza críticamente manifestaciones de "${capitalizedTopic}" en contextos culturales e históricos diversos, y produce obras originales aplicando principios estéticos y técnicas avanzadas.`,
+        tech:      `Fase 6 - Analiza el impacto ético, social y económico de "${capitalizedTopic}" en la sociedad actual, y desarrolla un prototipo o propuesta tecnológica que responda a una problemática local.`,
+        math:      `Fase 6 - Aplica el pensamiento algebraico y el razonamiento matemático para modelar y resolver situaciones reales vinculadas a "${capitalizedTopic}", justificando procedimientos y resultados.`,
+        civics:    `Fase 6 - Analiza críticamente problemáticas sociales vinculadas a "${capitalizedTopic}", evalúa marcos normativos y propone mecanismos ciudadanos de incidencia y cambio colectivo.`,
+        language:  `Fase 6 - Analiza textos de distintos géneros discursivos relacionados con "${capitalizedTopic}", evalúa argumentos e intenciones comunicativas, y produce textos propios con rigor y creatividad.`,
+        social:    `Fase 6 - Analiza procesos sociales, económicos y geopolíticos relacionados con "${capitalizedTopic}", interpreta indicadores y propone reflexiones fundamentadas sobre sus implicaciones.`,
+        default:   `Fase 6 - Analiza críticamente el impacto social, científico y cultural de "${capitalizedTopic}", fundamenta su postura con evidencia, y elabora un producto comunicativo argumentativo de calidad.`
+      },
+      'preparatoria': {
+        ecology:   `Modela interacciones ecosistémicas relacionadas con "${capitalizedTopic}" utilizando pensamiento sistémico, y diseña proyectos de investigación-acción con metodología científica para su contexto regional.`,
+        health:    `Analiza desde perspectivas interdisciplinarias los determinantes sociales relacionados con "${capitalizedTopic}", diseña protocolos de investigación y elabora propuestas de política pública comunitaria.`,
+        history:   `Construye interpretaciones historiográficas sobre "${capitalizedTopic}" integrando fuentes primarias, teorías sociales y perspectivas comparadas, y las presenta en formatos académicos rigurosos.`,
+        art:       `Investiga y teoriza sobre "${capitalizedTopic}" desde enfoques estéticos e interdisciplinares, y desarrolla un proyecto artístico-conceptual que dialogue con problemáticas contemporáneas.`,
+        tech:      `Diseña y argumenta soluciones innovadoras a problemáticas reales integrando principios de "${capitalizedTopic}", evaluando implicaciones éticas, sociales y de sustentabilidad.`,
+        math:      `Modela fenómenos complejos mediante herramientas de "${capitalizedTopic}", aplica métodos analíticos y de cálculo avanzado, y justifica la validez de sus resultados de forma rigurosa.`,
+        civics:    `Diseña propuestas de intervención ciudadana fundamentadas en marcos jurídicos y filosóficos sobre "${capitalizedTopic}", evaluando su factibilidad e impacto en contextos democráticos.`,
+        language:  `Analiza y produce textos académicos y argumentativos de alta complejidad sobre "${capitalizedTopic}", evaluando el uso del lenguaje en contextos de poder, cultura e identidad.`,
+        social:    `Analiza tendencias globales relacionadas con "${capitalizedTopic}" usando indicadores cuantitativos y cualitativos, y elabora propuestas de desarrollo sustentable fundamentadas.`,
+        default:   `Integra marcos teóricos, datos empíricos y perspectivas interdisciplinarias para analizar "${capitalizedTopic}" y formular propuestas fundamentadas con impacto en su contexto social y natural.`
+      }
+    };
+
+    const topicKey = isEcology ? 'ecology' : isHealth ? 'health' : isHistory ? 'history' : isArt ? 'art' : isTech ? 'tech' : isMath ? 'math' : isCivics ? 'civics' : isLanguage ? 'language' : isSocial ? 'social' : 'default';
+    const pda = pdaMap[level]?.[topicKey] || pdaMap['primaria-alta']['default'];
+
+    // ── 4. Secuencia didáctica diferenciada por tema y nivel ──
+    const buildSequence = () => {
+      const levelShort = level === 'primaria-baja' ? 'pb' : level === 'primaria-alta' ? 'pa' : level === 'secundaria' ? 'sec' : 'prep';
       
-      const campos = {
-        'matematicas': 'Saberes y Pensamiento Científico',
-        'ciencias': 'Saberes y Pensamiento Científico',
-        'lenguajes': 'Lenguajes'
+      // Actividades de INICIO diferenciadas
+      const inicioMap: Record<string, Record<string, string>> = {
+        ecology: {
+          pb:   `Salir al patio escolar a observar elementos naturales del entorno. Pedir a los alumnos que recojan una hoja, una piedra o un fragmento de suelo y los coloquen en la mesa. Preguntar: ¿De dónde viene esto? ¿Qué necesita para existir? Registrar sus respuestas en una cartulina colectiva con dibujos.`,
+          pa:   `Mostrar un video corto (3-4 min) con imágenes de "${capitalizedTopic}" en México y el mundo, contrastando ecosistemas sanos y deteriorados. Preguntar: ¿Qué diferencias observas? ¿Qué factores humanos aparecen? Organizar una lluvia de ideas con post-its en la pizarra.`,
+          sec:  `Presentar datos estadísticos reales sobre "${capitalizedTopic}" en México (gráficas de CONABIO o SEMARNAT). Plantear el conflicto cognitivo: ¿Podemos seguir ignorando esta tendencia? Debatir en parejas durante 5 minutos antes de la plenaria.`,
+          prep: `Analizar un artículo científico o reporte de organismos internacionales (IPCC, ONU-Ambiente) sobre "${capitalizedTopic}". Identificar variables, metodología y conclusiones. Discutir en equipos la validez de los datos y sus implicaciones para políticas públicas locales.`
+        },
+        health: {
+          pb:   `Comenzar con un juego de "Simón dice" con hábitos saludables relacionados con "${capitalizedTopic}". Luego mostrar imágenes de hábitos saludables vs. no saludables y pedir que los clasifiquen en el pizarrón.`,
+          pa:   `Aplicar una encuesta rápida anónima sobre hábitos relacionados con "${capitalizedTopic}" en el grupo. Compartir los resultados y analizar: ¿Qué tanto practicamos lo que sabemos? ¿Por qué existe esa brecha?`,
+          sec:  `Analizar estadísticas de salud pública en México relacionadas con "${capitalizedTopic}" (INEGI, Secretaría de Salud). Plantear: ¿Quiénes son más vulnerables y por qué? Introducir el concepto de determinantes sociales de la salud.`,
+          prep: `Revisar un estudio epidemiológico sobre "${capitalizedTopic}" en México. Identificar factores de riesgo, grupos vulnerables e intervenciones documentadas. Debatir la efectividad de las políticas actuales.`
+        },
+        history: {
+          pb:   `Mostrar imágenes de "${capitalizedTopic}" y preguntar qué saben al respecto. Leer en colectivo un texto breve ilustrado sobre el tema. Construir en el pizarrón una "línea de tiempo" sencilla con dibujos.`,
+          pa:   `Presentar una fuente primaria sencilla (imagen, carta o crónica) relacionada con "${capitalizedTopic}". Preguntar: ¿Quién la escribió? ¿Cuándo? ¿Qué nos dice sobre ese momento histórico? Comparar con el presente.`,
+          sec:  `Analizar dos fuentes históricas con perspectivas diferentes sobre "${capitalizedTopic}". Preguntar: ¿Por qué difieren? ¿Cuál es más confiable y por qué? Introducir el concepto de historiografía crítica.`,
+          prep: `Revisar un debate historiográfico actual sobre "${capitalizedTopic}". Identificar las corrientes interpretativas en conflicto y los argumentos de cada postura. Plantear la postura propia con base en evidencia documental.`
+        },
+        art: {
+          pb:   `Mostrar obras visuales, fragmentos musicales o movimientos de danza relacionados con "${capitalizedTopic}". Pedir que describan qué sienten al verlos/escucharlos. Realizar una creación libre inicial con materiales de su elección.`,
+          pa:   `Presentar obras de artistas mexicanos y mundiales vinculadas a "${capitalizedTopic}". Analizar: técnica, contexto histórico, propósito. Debatir qué quería comunicar el artista y si lo logra.`,
+          sec:  `Analizar críticamente una obra o movimiento relacionado con "${capitalizedTopic}" desde dimensiones estéticas, históricas y culturales. Comparar con expresiones contemporáneas. Debatir el papel del arte en la transformación social.`,
+          prep: `Revisar teorías estéticas aplicadas a "${capitalizedTopic}". Analizar una obra canónica y una de vanguardia. Discutir: ¿Qué define el valor artístico? ¿Qué papel juega el contexto sociopolítico?`
+        },
+        tech: {
+          pb:   `Mostrar objetos tecnológicos cotidianos relacionados con "${capitalizedTopic}" y preguntar: ¿Cómo funcionan? ¿Quién los inventó? ¿Cómo cambiarían nuestra vida sin ellos? Hacer un dibujo de "cómo se vería el mundo sin esta tecnología".`,
+          pa:   `Ver un video sobre aplicaciones actuales de "${capitalizedTopic}" en distintos sectores (medicina, educación, ambiente). Preguntar: ¿Qué problemas resuelve? ¿Cuáles genera? Organizar un debate de pros y contras.`,
+          sec:  `Explorar casos reales del impacto de "${capitalizedTopic}" en la sociedad (positivos y negativos). Analizar dilemas éticos: privacidad, brecha digital, desempleo. Diseñar un código ético básico para su uso responsable.`,
+          prep: `Analizar tendencias tecnológicas de "${capitalizedTopic}" con fuentes académicas y empresariales. Evaluar impacto social, económico y ambiental. Plantear un modelo de innovación responsable con metodología de design thinking.`
+        },
+        math: {
+          pb:   `Presentar un problema real y cotidiano que requiera usar "${capitalizedTopic}" (compartir materiales, medir el salón, contar objetos). Pedir que lo resuelvan con material concreto antes de explicar el concepto formal.`,
+          pa:   `Plantear un desafío matemático contextualizado (presupuesto escolar, recetas de cocina, datos estadísticos del grupo) que involucre "${capitalizedTopic}". Permitir que lo intenten en parejas sin instrucción previa para activar conocimientos previos.`,
+          sec:  `Presentar una situación real (financiera, científica o social) que no pueda resolverse sin aplicar "${capitalizedTopic}". Preguntar: ¿Qué herramientas matemáticas necesitamos? ¿Cómo formalizamos el problema?`,
+          prep: `Revisar la historia y aplicaciones de "${capitalizedTopic}" en ciencias, ingeniería o economía. Plantear un problema abierto sin solución única para que los equipos propongan modelos distintos y los defiendan.`
+        },
+        civics: {
+          pb:   `Comenzar con un juego de roles donde los alumnos simulan situaciones de convivencia escolar relacionadas con "${capitalizedTopic}". Reflexionar: ¿Qué sintieron? ¿Qué cambiarían? Construir acuerdos colectivos de grupo.`,
+          pa:   `Presentar una noticia o caso real donde se vulnera o se ejerce "${capitalizedTopic}". Analizar: ¿A quién afecta? ¿Qué instituciones intervienen? ¿Qué podrían hacer los ciudadanos?`,
+          sec:  `Analizar un caso jurídico o social relacionado con "${capitalizedTopic}" en México. Revisar el marco legal (Constitución, tratados internacionales). Debatir: ¿La ley es suficiente? ¿Qué falta en la práctica?`,
+          prep: `Revisar un conflicto social vigente vinculado a "${capitalizedTopic}" desde perspectivas filosóficas, jurídicas y sociológicas. Analizar mecanismos de participación ciudadana disponibles y sus limitaciones estructurales.`
+        },
+        language: {
+          pb:   `Escuchar o leer en voz alta un texto breve y atractivo relacionado con "${capitalizedTopic}". Preguntar: ¿Qué entendieron? ¿Qué palabra les llamó la atención? ¿Cómo les hizo sentir? Completar un organizador gráfico sencillo.`,
+          pa:   `Presentar dos textos sobre "${capitalizedTopic}" con propósitos diferentes (informativo y narrativo). Identificar diferencias de estructura, tono y vocabulario. Debatir cuál es más convincente y por qué.`,
+          sec:  `Analizar un texto argumentativo o de opinión sobre "${capitalizedTopic}". Identificar tesis, argumentos, contraargumentos y falacias. Evaluar la solidez del razonamiento y la eficacia comunicativa del autor.`,
+          prep: `Revisar textos académicos y periodísticos sobre "${capitalizedTopic}" comparando registros, géneros y posicionamientos ideológicos. Analizar cómo el lenguaje construye realidades y moldea opinión pública.`
+        },
+        social: {
+          pb:   `Mostrar un mapa de México o del mundo señalando zonas relacionadas con "${capitalizedTopic}". Preguntar: ¿Conocen estos lugares? ¿Qué hay ahí? Ubicar en un mapa en blanco los elementos identificados.`,
+          pa:   `Analizar datos demográficos, económicos o geográficos de "${capitalizedTopic}" en México usando tablas y mapas. Identificar patrones y desigualdades. Preguntar: ¿Por qué existen estas diferencias entre regiones?`,
+          sec:  `Revisar indicadores socioeconómicos (IDH, GINI, PIB) relacionados con "${capitalizedTopic}" a nivel estatal y nacional. Analizar causas estructurales de las desigualdades observadas y su relación con políticas públicas.`,
+          prep: `Analizar procesos globales de "${capitalizedTopic}" desde perspectivas de sistemas-mundo, geopolítica e interdependencia. Evaluar teorías explicativas y proponer marcos interpretativos propios con base en datos.`
+        },
+        default: {
+          pb:   `Iniciar con una actividad lúdica de exploración libre relacionada con "${capitalizedTopic}". Los alumnos comparten lo que ya saben en una lluvia de ideas colectiva dibujada en el pizarrón. Se plantea la pregunta central: ¿Qué queremos aprender sobre este tema?`,
+          pa:   `Presentar un caso o situación provocadora relacionada con "${capitalizedTopic}" que genere curiosidad y preguntas. Los alumnos registran sus saberes previos y sus dudas en tarjetas de colores y las clasifican en el pizarrón.`,
+          sec:  `Presentar un conflicto cognitivo real sobre "${capitalizedTopic}" con datos, imágenes o testimonios contradictorios. Los alumnos debaten en equipos sus interpretaciones previas antes de iniciar la investigación sistemática.`,
+          prep: `Revisar distintas perspectivas teóricas sobre "${capitalizedTopic}" y plantear preguntas de investigación abierta. Los equipos proponen hipótesis iniciales y diseñan un protocolo básico para contrastarlas.`
+        }
       };
-      
-      const defaultCampo = campos[subject as keyof typeof campos] || 'Ética, Naturaleza y Sociedades';
 
-      const pdaTemplates = {
-        'primaria-baja': `Fase 3 - Identifica y explica con sus palabras la importancia de "${capitalizedTopic}" en su vida diaria, casa y escuela, realizando registros gráficos y sencillos de su entorno.`,
-        'primaria-alta': `Fase 5 - Investiga y sistematiza información sobre las implicaciones ecológicas y científicas de "${capitalizedTopic}" en la comunidad escolar, proponiendo alternativas creativas sustentables.`,
-        'secundaria': `Fase 6 - Analiza de forma crítica el impacto social, científico y tecnológico de "${capitalizedTopic}" a nivel regional y diseña un informe escrito argumentativo sobre sus aplicaciones.`,
-        'preparatoria': `Modela y argumenta fenómenos complejos de la sociedad y naturaleza integrando conceptos teóricos de "${capitalizedTopic}" para plantear soluciones interdisciplinarias.`
+      const desarrolloMap: Record<string, Record<string, string>> = {
+        ecology: {
+          pb:   `Salir al patio o huerto escolar para realizar una exploración guiada de "${capitalizedTopic}". En equipos de 3, registrar observaciones en una "bitácora de explorador" con dibujos y descripciones. Al regresar, construir un mural colectivo con sus hallazgos y rotularlo con conceptos clave aprendidos.`,
+          pa:   `En equipos, diseñar y ejecutar una "auditoría ambiental" de la escuela relacionada con "${capitalizedTopic}". Recolectar datos reales (residuos, consumo de agua, uso de energía), analizarlos en tablas y elaborar un informe con propuestas de mejora para presentar a las autoridades escolares.`,
+          sec:  `Investigar un estudio de caso local o regional sobre "${capitalizedTopic}" usando fuentes científicas. Analizar causas, consecuencias e impactos en distintos actores sociales. En equipos, diseñar un proyecto de intervención comunitaria con fases, responsables e indicadores de éxito medibles.`,
+          prep: `Diseñar una investigación de campo sobre "${capitalizedTopic}" con metodología mixta (datos cuantitativos + entrevistas). Aplicar herramientas de análisis ambiental, sistematizar resultados y elaborar un reporte académico con propuestas de política pública basadas en evidencia.`
+        },
+        health: {
+          pb:   `Elaborar en equipos un "Semáforo de la Salud" sobre "${capitalizedTopic}" con tarjetas de colores (verde: hábito saludable, rojo: perjudicial). Crear un folleto ilustrado con consejos para compartir con sus familias.`,
+          pa:   `Diseñar y aplicar una encuesta en la escuela sobre hábitos relacionados con "${capitalizedTopic}". Tabular resultados, elaborar gráficas y redactar conclusiones. Preparar una campaña de sensibilización con carteles, trípticos o videos cortos.`,
+          sec:  `Investigar factores de riesgo y protección de "${capitalizedTopic}" en adolescentes mexicanos. Analizar estadísticas oficiales, revisar programas de prevención existentes y evaluar su efectividad. Diseñar una propuesta de intervención escolar con estrategias basadas en evidencia.`,
+          prep: `Realizar una revisión sistemática de literatura científica sobre "${capitalizedTopic}". Analizar ensayos clínicos, revisiones Cochrane y metaanálisis. Diseñar un protocolo de intervención con indicadores de impacto y propuesta de evaluación de efectividad.`
+        },
+        history: {
+          pb:   `Construir en equipos una "caja de recuerdos" sobre "${capitalizedTopic}" con imágenes, objetos representativos y textos breves. Dramatizar un momento clave del tema con personajes creados por el grupo.`,
+          pa:   `Analizar en equipos fuentes primarias y secundarias sobre "${capitalizedTopic}" (mapas, fotografías, documentos, testimonios). Elaborar una línea del tiempo detallada con causas, consecuencias y conexiones con el presente. Redactar un texto de síntesis histórica con vocabulario específico.`,
+          sec:  `Comparar interpretaciones historiográficas sobre "${capitalizedTopic}" de distintas corrientes y épocas. Analizar el papel de los distintos actores sociales (elite, pueblo, mujeres, minorías). Redactar un ensayo argumentativo con postura personal sustentada en evidencia.`,
+          prep: `Desarrollar una investigación historiográfica sobre "${capitalizedTopic}" consultando fuentes primarias digitalizadas (AGN, Hemeroteca Nacional). Aplicar análisis histórico crítico, identificar sesgos y construir una interpretación propia fundamentada con aparato crítico formal.`
+        },
+        art: {
+          pb:   `Explorar materiales y técnicas relacionadas con "${capitalizedTopic}" mediante talleres de experimentación libre. Crear una obra colectiva usando técnicas descubiertas. Exhibirla en el salón explicando el proceso creativo con palabras propias.`,
+          pa:   `Investigar artistas o movimientos vinculados a "${capitalizedTopic}" en México y el mundo. Analizar obras representativas en cuanto a técnica, simbolismo y contexto. Crear una obra original inspirada en lo aprendido y preparar una cédula artística para su exposición.`,
+          sec:  `Desarrollar un proyecto artístico relacionado con "${capitalizedTopic}" integrando referentes históricos y culturales. Explorar técnicas avanzadas, documentar el proceso creativo en un portafolio y presentar la obra en una muestra colectiva con análisis crítico.`,
+          prep: `Desarrollar un proyecto artístico conceptual sobre "${capitalizedTopic}" con sustento teórico en filosofía estética o teoría del arte contemporáneo. Documentar investigación, proceso y reflexión crítica en un dossier académico. Presentar en formato de muestra pública con articulación discursiva.`
+        },
+        tech: {
+          pb:   `Construir un artefacto sencillo relacionado con "${capitalizedTopic}" usando materiales reciclados. Documentar el proceso con dibujos y describir para qué sirve y cómo funciona. Compartir en exposición grupal.`,
+          pa:   `Diseñar en equipo un proyecto tecnológico que aplique principios de "${capitalizedTopic}" para resolver un problema real de la escuela. Crear un prototipo funcional o una maqueta, documentar las etapas del proceso y presentarlo al grupo.`,
+          sec:  `Desarrollar un prototipo funcional relacionado con "${capitalizedTopic}" usando herramientas digitales o de fabricación disponibles. Documentar metodología (design thinking o scrum), pruebas, ajustes y resultados. Evaluar impacto social y sostenibilidad del diseño.`,
+          prep: `Diseñar una solución tecnológica compleja vinculada a "${capitalizedTopic}" aplicando metodologías de innovación (lean startup, design thinking). Desarrollar prototipo, plan de negocio o política tecnológica, evaluar viabilidad y presentar ante audiencia externa simulada.`
+        },
+        math: {
+          pb:   `Resolver en equipos una secuencia de problemas concretos sobre "${capitalizedTopic}" usando materiales manipulables (ábacos, fichas, regletas). Representar las soluciones gráficamente. Crear un "libro de problemas" con situaciones inventadas por el propio grupo.`,
+          pa:   `Aplicar conceptos de "${capitalizedTopic}" en un proyecto de investigación estadística del grupo (encuestas, mediciones, datos escolares). Construir gráficas, calcular medidas y redactar conclusiones en un reporte. Presentar resultados a otro grupo.`,
+          sec:  `Modelar situaciones económicas, físicas o sociales reales usando "${capitalizedTopic}". Resolver problemas abiertos en equipo, comparar distintos métodos de solución y evaluar cuál es más eficiente. Elaborar un reporte técnico con procedimientos, gráficas y justificaciones.`,
+          prep: `Aplicar herramientas avanzadas de "${capitalizedTopic}" para modelar un fenómeno real (financiero, demográfico, físico). Utilizar software matemático o de graficación. Elaborar un reporte con marco teórico, desarrollo y análisis crítico de resultados obtenidos.`
+        },
+        civics: {
+          pb:   `Simular una asamblea escolar sobre un problema real del aula relacionado con "${capitalizedTopic}". Elegir representantes, debatir propuestas y tomar decisiones colectivas. Redactar acuerdos y compromisos grupales en una "Constitución del Salón".`,
+          pa:   `Investigar un caso real de ejercicio o vulneración de "${capitalizedTopic}" en México o su comunidad. Analizar causas, actores implicados e instituciones responsables. Diseñar una campaña de sensibilización escolar con propuestas concretas de cambio.`,
+          sec:  `Analizar un caso jurídico real relacionado con "${capitalizedTopic}" usando el marco constitucional mexicano. Simular un juicio oral: fiscal, defensa, juez y testigos. Redactar un veredicto fundamentado y reflexionar sobre la brecha entre ley y práctica social.`,
+          prep: `Diseñar un proyecto de incidencia ciudadana sobre "${capitalizedTopic}" que incluya diagnóstico participativo, propuesta de política pública, estrategia de comunicación y plan de evaluación de impacto. Presentarlo ante audiencia real o simulada de tomadores de decisiones.`
+        },
+        language: {
+          pb:   `Crear en equipos un texto corto relacionado con "${capitalizedTopic}" (cuento, carta o instructivo). Ilustrarlo, compartirlo con el grupo y comentar lo que más gustó. Compilar las producciones en una antología colectiva del salón.`,
+          pa:   `Producir en equipos un texto de distinto género sobre "${capitalizedTopic}" (reportaje, cuento, poema, artículo de opinión). Revisar borradores con retroalimentación entre pares usando criterios de evaluación acordados. Publicar la versión final en el periódico mural escolar.`,
+          sec:  `Analizar textos de distintos géneros sobre "${capitalizedTopic}" identificando argumentación, retórica e intención comunicativa. Producir un texto argumentativo complejo con estructura formal, tesis sustentada y contraargumentos. Participar en un debate moderado sobre el tema.`,
+          prep: `Investigar cómo se ha abordado "${capitalizedTopic}" en distintos géneros y épocas literarias o periodísticas. Analizar recursos retóricos y posicionamientos ideológicos. Producir un ensayo académico con aparato crítico formal o un texto creativo con intención transformadora.`
+        },
+        social: {
+          pb:   `Elaborar en equipos un mapa de su comunidad o región identificando elementos relacionados con "${capitalizedTopic}". Investigar datos básicos y crear una ficha informativa ilustrada. Compartir en exposición grupal.`,
+          pa:   `Investigar características socioeconómicas y geográficas de "${capitalizedTopic}" en distintas regiones de México. Comparar indicadores, elaborar mapas temáticos y gráficas. Redactar un informe con análisis de causas y propuestas de desarrollo local.`,
+          sec:  `Analizar datos estadísticos y geoespaciales sobre "${capitalizedTopic}" usando fuentes oficiales (INEGI, CONAPO). Identificar desigualdades regionales, factores históricos y políticas públicas vigentes. Elaborar un estudio de caso regional fundamentado con evidencia.`,
+          prep: `Analizar "${capitalizedTopic}" desde perspectivas teóricas interdisciplinares (geografía crítica, economía política, sociología). Revisar indicadores internacionales, modelar escenarios futuros y proponer estrategias de desarrollo sustentable con base en evidencia comparada.`
+        },
+        default: {
+          pb:   `En equipos de 3 alumnos, explorar "${capitalizedTopic}" usando distintas fuentes (libros, imágenes, material concreto). Organizar la información en un mapa mental ilustrado. Cada equipo comparte sus hallazgos con el grupo y construyen juntos una síntesis colectiva en el pizarrón.`,
+          pa:   `Investigar en equipos los aspectos más importantes de "${capitalizedTopic}" usando diversas fuentes. Sistematizar la información en un organizador gráfico (cuadro comparativo, esquema o infografía). Elaborar un producto comunicativo (tríptico, póster o presentación) para compartir con otros grupos.`,
+          sec:  `Desarrollar en equipos un proyecto de investigación sobre "${capitalizedTopic}" con pregunta de investigación propia, metodología definida y fuentes académicas. Analizar los datos obtenidos, elaborar conclusiones fundamentadas y presentarlas ante el grupo en formato académico.`,
+          prep: `Diseñar y ejecutar un proyecto de investigación sobre "${capitalizedTopic}" con sustento teórico y metodológico. Recopilar y analizar datos de fuentes primarias y secundarias. Elaborar un producto de divulgación académica (artículo, ensayo, póster científico) con aparato crítico formal.`
+        }
       };
 
-      const defaultPda = pdaTemplates[level as keyof typeof pdaTemplates] || `PDA sobre ${capitalizedTopic}`;
-
-      content = {
-        campoFormativo: defaultCampo,
-        ejesArticuladores: subject === 'lenguajes' 
-          ? ['Apropiación de las Culturas a través de la Lectura y la Escritura', 'Pensamiento Crítico']
-          : ['Pensamiento Crítico', 'Vida Saludable'],
-        pda: defaultPda,
-        inicio: `Presentar el tema central "${capitalizedTopic}" al grupo a través de una dinámica grupal o lluvia de ideas. Plantear la pregunta detonadora: ¿Cómo se relaciona "${capitalizedTopic}" con las actividades que hacemos todos los días en la escuela y en nuestros hogares? Registrar opiniones en el pizarrón.`,
-        desarrollo: `En equipos cooperativos, investigar las características y aplicaciones prácticas de "${capitalizedTopic}". Utilizar recursos escolares (libros de texto, fichas de biblioteca o experimentos prácticos). Diseñar de manera colaborativa un organizador gráfico (mapa mental o cuadro sinóptico) que compile la información recolectada e incluya ilustraciones.`,
-        cierre: `Exposición grupal de los organizadores gráficos de cada equipo. Espacio de retroalimentación formativa y coevaluación constructiva entre compañeros. Redactar de forma individual una breve conclusión de 5 líneas sobre los saberes adquiridos de "${capitalizedTopic}".`,
-        evaluacion: `Organizador gráfico final del equipo, participación cooperativa valorada por rúbrica, y conclusión escrita reflexiva sobre "${capitalizedTopic}".`,
-        materiales: `Hojas de rotafolio o cartulina, marcadores de colores, colores, libro de texto "Nuestros Saberes", y fichas informativas de consulta preparadas por el docente.`
+      const cierreMap: Record<string, Record<string, string>> = {
+        ecology: {
+          pb:   `Presentar en plenaria el mural elaborado. Cada equipo explica qué aprendió sobre "${capitalizedTopic}" y qué puede hacer en casa para cuidar el ambiente. Escribir en tarjetas individuales un compromiso concreto y pegarlo en el "árbol de compromisos" del salón.`,
+          pa:   `Presentar los informes de auditoría ambiental ante el grupo y comentar las propuestas. Elegir colectivamente las 3 más viables para implementar en la escuela. Reflexionar en bitácora: ¿Qué aprendí sobre mi relación con "${capitalizedTopic}"? ¿Qué voy a cambiar?`,
+          sec:  `Presentar los proyectos de intervención en un "Foro Escolar por el Ambiente". Recibir retroalimentación de compañeros y docente con base en rúbrica. Debatir: ¿Qué obstáculos enfrenta la acción ambiental? ¿Cómo se supera la inacción? Autoevaluación escrita.`,
+          prep: `Presentar el reporte de investigación en formato de congreso académico simulado. Responder preguntas del auditorio y recibir retroalimentación técnica. Reflexionar: ¿Cómo cambia este estudio la forma en que comprendo "${capitalizedTopic}"? ¿Qué líneas de investigación quedan abiertas?`
+        },
+        default: {
+          pb:   `Ronda de socialización: cada equipo comparte lo más importante que aprendió sobre "${capitalizedTopic}". Construir juntos una "Nube de saberes" en el pizarrón. Completar individualmente la ficha: "Antes pensaba... Ahora sé que... Todavía me pregunto..."`,
+          pa:   `Presentar los productos elaborados al grupo. Coevaluar con rúbrica acordada previamente. Reflexionar individualmente en la bitácora: ¿Qué fue lo más difícil? ¿Qué cambió en mi forma de pensar sobre "${capitalizedTopic}"? Compartir una conclusión oral con el grupo.`,
+          sec:  `Llevar a cabo una plenaria académica donde cada equipo defiende sus hallazgos sobre "${capitalizedTopic}" y responde preguntas. Coevaluar con criterios acordados. Redactar individualmente una reflexión crítica de media página sobre el aprendizaje más significativo.`,
+          prep: `Presentar los proyectos en formato académico y responder cuestionamientos del grupo y del docente. Autoevaluación con rúbrica de investigación. Redactar una reflexión escrita sobre cómo el estudio de "${capitalizedTopic}" transforma la comprensión de la realidad y abre nuevas preguntas.`
+        }
       };
-    }
+
+      const inicio    = (inicioMap[topicKey]    || inicioMap['default'])[levelShort];
+      const desarrollo = (desarrolloMap[topicKey] || desarrolloMap['default'])[levelShort];
+      const cierre    = (cierreMap[topicKey]     || cierreMap['default'])[levelShort];
+
+      return { inicio, desarrollo, cierre };
+    };
+
+    const { inicio, desarrollo, cierre } = buildSequence();
+
+    // ── 5. Evaluación y materiales diferenciados ──
+    const evalMap: Record<string, string> = {
+      ecology:   `Bitácora de exploración o auditoría ambiental con datos reales, propuesta de acción fundamentada sobre "${capitalizedTopic}", y reflexión individual sobre el compromiso ambiental personal.`,
+      health:    `Producto de campaña de salud relacionada con "${capitalizedTopic}" (tríptico, cartel, video), encuesta con análisis estadístico y propuesta de intervención evaluada por rúbrica.`,
+      history:   `Ensayo o análisis histórico sobre "${capitalizedTopic}" con citas de fuentes primarias y secundarias, línea del tiempo argumentada y reflexión sobre su vigencia actual.`,
+      art:       `Obra artística original vinculada a "${capitalizedTopic}" con cédula de presentación, portafolio de proceso creativo y análisis crítico de referentes trabajados.`,
+      tech:      `Prototipo funcional o propuesta tecnológica relacionada con "${capitalizedTopic}", documentación del proceso (diseño, prueba, ajuste) y reflexión ética sobre el impacto social.`,
+      math:      `Reporte de resolución de problemas sobre "${capitalizedTopic}" con distintos procedimientos, representaciones gráficas y justificación de la eficiencia de cada método.`,
+      civics:    `Producto de incidencia ciudadana sobre "${capitalizedTopic}" (campaña, propuesta, juicio simulado), reflexión sobre la responsabilidad cívica personal y coevaluación del trabajo colaborativo.`,
+      language:  `Texto producido sobre "${capitalizedTopic}" en el género trabajado, con evidencia de revisión y mejora, presentado ante audiencia real o simulada y evaluado con rúbrica de escritura.`,
+      social:    `Informe geográfico-social con mapas temáticos, análisis de indicadores y propuesta de desarrollo relacionada con "${capitalizedTopic}", evaluado con rúbrica de investigación social.`,
+      default:   `Producto final del proyecto de investigación sobre "${capitalizedTopic}" (infografía, reporte, presentación), reflexión escrita metacognitiva y coevaluación del desempeño en equipo.`
+    };
+
+    const materialesMap: Record<string, string> = {
+      ecology:   `Material de campo (lupas, bolsas de plástico, fichas de registro), fuentes de datos ambientales (CONABIO, SEMARNAT), cartulinas, marcadores y recursos reciclados para prototipos.`,
+      health:    `Estadísticas de salud (INEGI, SSA), cartulinas para campaña, colores, acceso a internet, encuestas impresas y material para elaborar productos comunicativos.`,
+      history:   `Fuentes primarias digitalizadas o impresas, atlas histórico, línea del tiempo en papel bond, colores y recursos audiovisuales (video documental o fotografías de época).`,
+      art:       `Materiales de la técnica trabajada (pinceles, pinturas, arcilla, instrumentos), reproducciones de obras de referencia, portafolios y fichas de análisis artístico.`,
+      tech:      `Materiales de construcción (cartón, cables, sensores básicos) o dispositivos digitales, guía de diseño, fichas de documentación del proceso y recursos de investigación.`,
+      math:      `Material manipulable específico al tema (ábacos, regletas, fichas, dados), papel milimétrico, calculadora, software de graficación (opcional) y hojas de problemas contextualizados.`,
+      civics:    `Constitución Política de los Estados Unidos Mexicanos, noticias de prensa, materiales para debate (tarjetas de roles, reglamento de asamblea) y recursos para la campaña de sensibilización.`,
+      language:  `Textos modelo de distintos géneros relacionados con "${capitalizedTopic}", diccionario, guías de escritura, material para publicación (periódico mural, blog escolar) y rúbricas de evaluación.`,
+      social:    `Mapas temáticos, atlas geográfico, bases de datos de INEGI y CONAPO, computadoras con acceso a internet, papel bond y marcadores para elaborar infografías y cartografía.`,
+      default:   `Libros de texto "Nuestros Saberes" y fuentes complementarias sobre "${capitalizedTopic}", cartulinas, marcadores, acceso a internet para investigación y materiales de presentación.`
+    };
 
     const levelNames = {
-      'primaria-baja': 'Primaria Baja (1º a 3º Grado)',
-      'primaria-alta': 'Primaria Alta (4º a 6º Grado)',
-      'secundaria': 'Secundaria (1º a 3º Grado)',
-      'preparatoria': 'Preparatoria / Bachillerato'
+      'primaria-baja':  'Primaria Baja (1º a 3º Grado)',
+      'primaria-alta':  'Primaria Alta (4º a 6º Grado)',
+      'secundaria':     'Secundaria (1º a 3º Grado)',
+      'preparatoria':   'Preparatoria / Bachillerato'
     };
 
     const subjectNames = {
       'matematicas': 'Matemáticas',
-      'ciencias': 'Ciencias Naturales',
-      'lenguajes': 'Español / Lenguajes'
+      'ciencias':    'Ciencias Naturales',
+      'lenguajes':   'Español / Lenguajes'
     };
 
     return {
       id: 'plan-' + Date.now(),
-      title: `Proyecto: Aprendiendo sobre ${promptText.substring(0, 30)}`,
+      title: `Proyecto didáctico: ${capitalizedTopic} — ${levelNames[level as keyof typeof levelNames] || level}`,
       subjectId: subject,
       subjectName: subjectNames[subject as keyof typeof subjectNames] || 'Asignatura',
       levelId: level,
       levelName: levelNames[level as keyof typeof levelNames] || 'Nivel Educativo',
-      campoFormativo: content.campoFormativo,
-      ejesArticuladores: content.ejesArticuladores,
-      pda: content.pda,
-      duration: '4 horas lectivas',
-      inicio: content.inicio,
-      desarrollo: content.desarrollo,
-      cierre: content.cierre,
-      evaluacion: content.evaluacion,
-      materiales: content.materiales,
+      campoFormativo: campo,
+      ejesArticuladores: ejes,
+      pda,
+      duration: level === 'preparatoria' ? '6 horas lectivas' : level === 'secundaria' ? '5 horas lectivas' : '4 horas lectivas',
+      inicio,
+      desarrollo,
+      cierre,
+      evaluacion: evalMap[topicKey] || evalMap['default'],
+      materiales: materialesMap[topicKey] || materialesMap['default'],
       createdAt: new Date().toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })
     };
   };
@@ -852,11 +1073,12 @@ Debes responder ÚNICAMENTE con un objeto JSON válido, estructurado exactamente
                     top: 0 !important;
                     width: 100% !important;
                     margin: 0 !important;
-                    padding: 0 !important;
+                    padding: 12px 24px !important;
                     border: none !important;
                     box-shadow: none !important;
                     background: white !important;
                     color: black !important;
+                    overflow: visible !important;
                   }
                   .no-print {
                     display: none !important;
@@ -868,11 +1090,43 @@ Debes responder ÚNICAMENTE con un objeto JSON válido, estructurado exactamente
                     padding: 2px 6px !important;
                     border-radius: 4px !important;
                   }
-                  textarea {
+                  textarea, .editable-field-wrap {
                     border: none !important;
                     resize: none !important;
                     overflow: visible !important;
                     height: auto !important;
+                    min-height: unset !important;
+                    max-height: none !important;
+                    white-space: pre-wrap !important;
+                    word-break: break-word !important;
+                    display: block !important;
+                    width: 100% !important;
+                  }
+                  .print-avoid-break {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                  }
+                  .print-section {
+                    page-break-inside: avoid !important;
+                    break-inside: avoid !important;
+                    margin-bottom: 16px !important;
+                    overflow: visible !important;
+                  }
+                  .print-hide-textarea {
+                    display: none !important;
+                  }
+                  .print-show-text {
+                    display: block !important;
+                    overflow: visible !important;
+                    height: auto !important;
+                    max-height: none !important;
+                    white-space: pre-wrap !important;
+                    word-break: break-word !important;
+                    color: black !important;
+                  }
+                  * {
+                    overflow: visible !important;
+                    max-height: none !important;
                   }
                 }
               `}</style>
@@ -1124,13 +1378,20 @@ function EditableField({ value, onChange, placeholder }: { value: string; onChan
   }, [value]);
 
   return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      rows={1}
-      className="w-full bg-transparent border border-transparent hover:border-zinc-200 focus:border-blue-500 focus:bg-blue-50/5 dark:focus:bg-zinc-950/20 py-2.5 px-3 rounded-xl text-xs text-zinc-700 dark:text-zinc-350 font-medium outline-none resize-none overflow-hidden transition-all leading-relaxed"
-    />
+    <div className="editable-field-wrap w-full">
+      {/* Textarea: visible only on screen */}
+      <textarea
+        ref={textareaRef}
+        value={value}
+        onChange={(e) => { onChange(e.target.value); adjustHeight(); }}
+        placeholder={placeholder}
+        rows={1}
+        className="w-full bg-transparent border border-transparent hover:border-zinc-200 focus:border-blue-500 focus:bg-blue-50/5 dark:focus:bg-zinc-950/20 py-2.5 px-3 rounded-xl text-xs text-zinc-700 dark:text-zinc-350 font-medium outline-none resize-none overflow-hidden transition-all leading-relaxed print-hide-textarea"
+      />
+      {/* Plain text div: visible only when printing — no scroll arrows, no borders */}
+      <div className="print-show-text hidden py-1 px-0 text-xs text-zinc-700 font-medium leading-relaxed whitespace-pre-wrap break-words">
+        {value || <span className="text-zinc-400">{placeholder}</span>}
+      </div>
+    </div>
   );
 }
