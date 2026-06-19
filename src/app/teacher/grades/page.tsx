@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
+import { TEACHER_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { 
   FileSpreadsheet, ArrowLeft, Award, CheckCircle2, 
@@ -10,9 +13,47 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { DetailedStudent } from '@/types';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { useStudentStore } from '@/store/useStudentStore';
 
 export default function TeacherGrades() {
-  const { studentsList, portfolioItems, questAttempts, detailedStudents, schedulesList, currentTeacher, groupsList } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const currentTeacher = TEACHER_SEED;
+  const portfolioItems = usePortfolioStore(state => state.portfolioItems);
+  const fetchPortfolioItems = usePortfolioStore(state => state.fetchPortfolioItems);
+  const fetchStats = useStudentStore(state => state.fetchStats);
+  const questAttempts = useGamificationStore(state => state.questAttempts);
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
+  const schedulesList = useSchoolAdminStore(state => state.schedulesList);
+  const groupsList = useSchoolAdminStore(state => state.groupsList);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'teacher') {
+      fetchPortfolioItems();
+      fetchStats();
+    }
+  }, [user, fetchPortfolioItems, fetchStats]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
 

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect, use } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentStats } from '@/store/useStudentStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Header } from '@/components/Header';
 import { 
   ArrowLeft, Play, FileSpreadsheet, AudioLines, 
@@ -9,6 +11,8 @@ import {
   Trophy, Sparkles, Upload, FileImage, Mic, HelpCircle, ArrowRight, Lock, Award, Heart, Brain
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 interface MissionPageProps {
   params: Promise<{ id: string }>;
@@ -16,8 +20,45 @@ interface MissionPageProps {
 
 export default function MissionPage({ params }: MissionPageProps) {
   const { id } = use(params);
-  const { missions, stats, submitQuiz, submitPortfolioItem, questAttempts, submitExam } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const fetchStats = useStudentStore(state => state.fetchStats);
+  const fetchMissions = useGamificationStore(state => state.fetchMissions);
   
+  const stats = useCurrentStudentStats();
+  
+  const missions = useGamificationStore(state => state.missionsList);
+  const submitQuiz = useGamificationStore(state => state.submitQuiz);
+  const submitExam = useGamificationStore(state => state.submitExam);
+  const questAttempts = useGamificationStore(state => state.questAttempts);
+  
+  const submitPortfolioItem = usePortfolioStore(state => state.submitPortfolioItem);
+  
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchStats();
+      fetchMissions();
+    }
+  }, [user, fetchStats, fetchMissions]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Buscar misión
   const mission = missions.find(m => m.id === id);
   
@@ -118,7 +159,7 @@ export default function MissionPage({ params }: MissionPageProps) {
     }
   };
 
-  const nextQuestion = () => {
+  const nextQuestion = async () => {
     const questions = (selectedQuest.content as any).questions;
     if (currentQuestionIdx < questions.length - 1) {
       setCurrentQuestionIdx(prev => prev + 1);
@@ -128,7 +169,7 @@ export default function MissionPage({ params }: MissionPageProps) {
     } else {
       // Final del cuestionario, enviar resultados
       const finalScorePercentage = Math.round((quizScore / questions.length) * 100);
-      const results = submitQuiz(selectedQuest.id, finalScorePercentage, quizAnswers);
+      const results = await submitQuiz(selectedQuest.id, finalScorePercentage, quizAnswers);
       setQuizResult(results);
     }
   };

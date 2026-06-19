@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar } from '@/store/useStudentStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
+import { BADGES_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { AvatarCustomizer } from '@/components/AvatarCustomizer';
 import { RpgCombatViewport } from '@/components/RpgCombatViewport';
@@ -11,14 +15,70 @@ import {
   FileText, Landmark, User, ExternalLink, Award, Sparkle, Users, Swords
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function StudentDashboard() {
-  const { 
-    stats, avatar, missions, studentBadges, badges, activeStudentId, 
-    feedPet, playWithPet, levelUpAttribute, portfolioItems, submitPeerReview,
-    changeAvatar, detailedStudents,
-    shopArtifacts, studentInventoryMap, studentMessages, purchaseArtifact, markStudentMessageAsRead
-  } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const feedPet = useStudentStore(state => state.feedPet);
+  const playWithPet = useStudentStore(state => state.playWithPet);
+  const levelUpAttribute = useStudentStore(state => state.levelUpAttribute);
+  const changeAvatar = useStudentStore(state => state.changeAvatar);
+  const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
+  const studentMessages = useStudentStore(state => state.studentMessages);
+  const markStudentMessageAsRead = useStudentStore(state => state.markStudentMessageAsRead);
+  const fetchStats = useStudentStore(state => state.fetchStats);
+  const fetchPortfolioItems = usePortfolioStore(state => state.fetchPortfolioItems);
+  const fetchMissions = useGamificationStore(state => state.fetchMissions);
+  
+  const stats = useCurrentStudentStats();
+  const avatar = useCurrentStudentAvatar();
+
+  React.useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  React.useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchStats();
+      fetchPortfolioItems();
+      fetchMissions();
+    }
+  }, [user, fetchStats, fetchPortfolioItems, fetchMissions]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const purchaseArtifact = async (studentId: string, artifactId: string) => {
+    await useStudentStore.getState().purchaseArtifact(studentId, artifactId);
+  };
+
+  const missions = useGamificationStore(state => state.missionsList);
+  const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
+  const rawStudentBadges = useGamificationStore(state => state.studentBadges);
+  const studentBadges = rawStudentBadges.filter(sb => sb.student_id === activeStudentId).map(sb => ({
+    ...sb,
+    badge: BADGES_SEED.find(b => b.id === sb.badge_id)
+  }));
+  const badges = BADGES_SEED;
+
+  const portfolioItems = usePortfolioStore(state => state.portfolioItems);
+  const submitPeerReview = usePortfolioStore(state => state.submitPeerReview);
+
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
 
   const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
 

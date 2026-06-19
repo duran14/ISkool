@@ -1,7 +1,8 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar } from '@/store/useStudentStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
 import { AnimeAvatarSprite } from './AnimeAvatarSprite';
 import { 
   Volume2, VolumeX, Shield, Swords, Sparkles, HelpCircle, 
@@ -340,16 +341,15 @@ class RetroSoundEngine {
 const soundEngine = new RetroSoundEngine();
 
 export function RpgCombatViewport() {
-  const { 
-    missions, 
-    questAttempts, 
-    submitExam, 
-    stats, 
-    avatar,
-    activeStudentId, 
-    studentInventoryMap,
-    shopArtifacts
-  } = useGamification();
+  const missions = useGamificationStore(state => state.missionsList);
+  const questAttempts = useGamificationStore(state => state.questAttempts);
+  const submitExam = useGamificationStore(state => state.submitExam);
+  const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
+
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
+  const stats = useCurrentStudentStats();
+  const avatar = useCurrentStudentAvatar();
 
   // Control de volumen e hilo musical
   const [volume, setVolume] = useState(0.3);
@@ -585,7 +585,7 @@ export function RpgCombatViewport() {
   };
 
   // MANEJAR VICTORIA Y CALIFICACIÓN
-  const handleVictory = () => {
+  const handleVictory = async () => {
     setBattlePhase('victory');
     setCombatState('victory');
     soundEngine.stopBackgroundMusic();
@@ -604,7 +604,7 @@ export function RpgCombatViewport() {
     const xpReward = missionExamQuest.xp_reward || 200;
 
     // Enviar calificación
-    submitExam(
+    await submitExam(
       missionExamQuest.id, 
       grade * 10, // Pasa score (60-100)
       {}, 

@@ -1,7 +1,9 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentStats } from '@/store/useStudentStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
 import { Header } from '@/components/Header';
 import { 
   Coins, ArrowLeft, Shield, Sparkles, Heart, Bell, ShoppingBag, 
@@ -9,12 +11,47 @@ import {
   GlassWater, Wand2, Gem, Clock, Crown, Sparkle, AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function MagicShopPage() {
-  const { 
-    stats, activeStudentId, shopArtifacts, studentInventoryMap, 
-    studentMessages, purchaseArtifact, markStudentMessageAsRead, detailedStudents
-  } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
+  const studentMessages = useStudentStore(state => state.studentMessages);
+  const purchaseArtifact = useStudentStore(state => state.purchaseArtifact);
+  const markStudentMessageAsRead = useStudentStore(state => state.markStudentMessageAsRead);
+  const fetchStats = useStudentStore(state => state.fetchStats);
+  const stats = useCurrentStudentStats();
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchStats();
+    }
+  }, [user, fetchStats]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
+
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
 
   const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
   const activeStudent = detailedStudents?.find(s => s.id === activeStudentId);
@@ -22,6 +59,7 @@ export default function MagicShopPage() {
   const defaultDialogue = "¡Bienvenido/a a mi Tienda Mágica, joven héroe! Soy Lyra, la guardiana del bosque. Mis artefactos te darán oportunidades extra de reintentar tus exámenes. ¿Hay alguno que te interese?";
   const [fairyDialogue, setFairyDialogue] = useState(defaultDialogue);
   const [tempDialogueTimeout, setTempDialogueTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [isPurchasing, setIsPurchasing] = useState(false);
 
   // Helper to trigger temporary fairy dialogue
   const triggerFairyReaction = (text: string) => {
@@ -33,7 +71,7 @@ export default function MagicShopPage() {
     setTempDialogueTimeout(timeout);
   };
 
-  const handlePurchase = (artifactId: string, price: number, name: string) => {
+  const handlePurchase = async (artifactId: string, price: number, name: string) => {
     if (ownedArtifactIds.includes(artifactId)) {
       triggerFairyReaction(`¡Ya llevas el/la "${name}" contigo! Su poder ya te acompaña.`);
       return;
@@ -41,13 +79,18 @@ export default function MagicShopPage() {
 
     if (stats.coins < price) {
       triggerFairyReaction(`¡Oh! Parece que aún necesitas más monedas escolares para llevarte el/la "${name}". ¡Sigue completando tus tareas!`);
-      purchaseArtifact(activeStudentId, artifactId); // Trigger original context check/alert
       return;
     }
 
-    // Process purchase
-    purchaseArtifact(activeStudentId, artifactId);
-    triggerFairyReaction(`¡Excelente elección! El/La "${name}" ahora es tuyo/a. ¡Equípalo/a en tu próxima batalla de examen!`);
+    try {
+      setIsPurchasing(true);
+      await purchaseArtifact(activeStudentId, artifactId);
+      triggerFairyReaction(`¡Excelente elección! El/La "${name}" ahora es tuyo/a. ¡Equípalo/a en tu próxima batalla de examen!`);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsPurchasing(false);
+    }
   };
 
   const handleHoverItem = (name: string, price: number, description: string) => {
@@ -309,14 +352,14 @@ export default function MagicShopPage() {
                       ) : (
                         <button
                           onClick={() => handlePurchase(art.id, art.price, art.name)}
-                          disabled={!hasCoins}
+                          disabled={!hasCoins || isPurchasing}
                           className={`px-3 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider transition-all active:scale-95 ${
-                            hasCoins 
+                            hasCoins && !isPurchasing
                               ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow shadow-emerald-700/35 border border-emerald-500/25' 
                               : 'bg-zinc-800 text-zinc-500 cursor-not-allowed border border-zinc-800'
                           }`}
                         >
-                          Comprar
+                          {isPurchasing ? 'Procesando...' : 'Comprar'}
                         </button>
                       )}
                     </div>

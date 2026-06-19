@@ -1,14 +1,43 @@
 "use client";
 
-import React, { useState } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import React, { useState, useEffect } from 'react';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { Header } from '@/components/Header';
 import { FileImage, Mic, HelpCircle, CheckCircle2, AlertCircle, Clock, Heart, MessageSquare } from 'lucide-react';
 import { FormattedDate } from '@/components/FormattedDate';
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function StudentPortfolio() {
-  const { portfolioItems } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const portfolioItems = usePortfolioStore(state => state.portfolioItems);
+  const fetchPortfolioItems = usePortfolioStore(state => state.fetchPortfolioItems);
   const [commentText, setCommentText] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchPortfolioItems();
+    }
+  }, [user, fetchPortfolioItems]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {

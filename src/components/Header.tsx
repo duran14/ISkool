@@ -3,11 +3,38 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useGamification } from '../context/gamification-context';
-import { Flame, Coins, Trophy, RefreshCw, GraduationCap, Users, User, ArrowRight } from 'lucide-react';
+import { useStudentStore, useCurrentStudentStats } from '../store/useStudentStore';
+import { useSchoolAdminStore } from '../store/useSchoolAdminStore';
+import { useGamificationStore } from '../store/useGamificationStore';
+import { usePortfolioStore } from '../store/usePortfolioStore';
+import { Flame, Coins, Trophy, RefreshCw, GraduationCap, Users, User, ArrowRight, LogOut } from 'lucide-react';
+import { useAuth } from '@/context/AuthContext';
 export const Header: React.FC = () => {
   const pathname = usePathname();
-  const { stats, resetAllData, studentsList, activeStudentId, switchStudent, detailedStudents } = useGamification();
+  const { user, logout } = useAuth();
+  
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const switchStudent = useStudentStore(state => state.switchStudent);
+  const stats = useCurrentStudentStats();
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
+  
+  const studentsList = detailedStudents.map(ds => ({
+    id: ds.id,
+    first_name: ds.first_name,
+    last_name: `${ds.last_name_1} ${ds.last_name_2 || ''}`.trim(),
+    role: 'student' as const,
+    email: ds.email || `${ds.first_name.toLowerCase()}@iskool.edu.mx`,
+    created_at: ds.birth_date,
+    updated_at: new Date().toISOString()
+  }));
+
+  const resetAllData = () => {
+    useStudentStore.getState().resetStudentStore();
+    usePortfolioStore.getState().resetPortfolioStore();
+    useGamificationStore.getState().resetGamificationStore();
+    useSchoolAdminStore.getState().resetSchoolAdminStore();
+  };
+
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
 
   const getRoleFromPath = () => {
@@ -200,6 +227,17 @@ export const Header: React.FC = () => {
           >
             <RefreshCw className="h-4 w-4" />
           </button>
+
+          {/* Logout Button */}
+          {user && (
+            <button
+              onClick={logout}
+              title="Cerrar Sesión"
+              className="p-2 rounded-full text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-900 transition-colors"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          )}
         </div>
       </div>
 

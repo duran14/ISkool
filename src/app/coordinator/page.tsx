@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
+import { SUBJECTS_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { 
   Users, UserPlus, Calendar, Plus, Trash2, Search, Filter, 
@@ -10,11 +11,26 @@ import {
 import { DetailedStudent, ClassSchedule, Group, SchoolSettings } from '@/types';
 
 export default function CoordinatorDashboard() {
-  const { 
-    detailedStudents, setDetailedStudents, groupsList, schedulesList, subjects,
-    registerStudent, generateGroupsForGrade, assignStudentToGroup,
-    createSchedule, deleteSchedule, deleteGroup, schoolSettings, saveSchoolSettings
-  } = useGamification();
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
+  const groupsList = useSchoolAdminStore(state => state.groupsList);
+  const schedulesList = useSchoolAdminStore(state => state.schedulesList);
+  const schoolSettings = useSchoolAdminStore(state => state.schoolSettings);
+
+  const registerStudent = useSchoolAdminStore(state => state.registerStudent);
+  const generateGroupsForGrade = useSchoolAdminStore(state => state.generateGroupsForGrade);
+  const assignStudentToGroup = useSchoolAdminStore(state => state.assignStudentToGroup);
+  const createSchedule = useSchoolAdminStore(state => state.createSchedule);
+  const deleteSchedule = useSchoolAdminStore(state => state.deleteSchedule);
+  const deleteGroup = useSchoolAdminStore(state => state.deleteGroup);
+  const saveSchoolSettings = useSchoolAdminStore(state => state.saveSchoolSettings);
+
+  const setDetailedStudents = (val: DetailedStudent[] | ((prev: DetailedStudent[]) => DetailedStudent[])) => {
+    const current = useSchoolAdminStore.getState().detailedStudents;
+    const next = typeof val === 'function' ? (val as Function)(current) : val;
+    useSchoolAdminStore.setState({ detailedStudents: next });
+  };
+
+  const subjects = SUBJECTS_SEED;
 
   // Gestión de Pestañas
   const [activeTab, setActiveTab] = useState<'students' | 'groups' | 'schedules' | 'settings'>('students');

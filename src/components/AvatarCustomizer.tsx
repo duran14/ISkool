@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useGamification } from '../context/gamification-context';
+import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar } from '../store/useStudentStore';
 import { Sparkles, Palette, Check, Lock, Smile, Shirt, Image as ImageIcon } from 'lucide-react';
 
 interface AvatarCustomizerProps {
@@ -10,7 +10,9 @@ interface AvatarCustomizerProps {
 }
 
 export const AvatarCustomizer: React.FC<AvatarCustomizerProps> = ({ isOpen, onClose }) => {
-  const { avatar, stats, changeAvatar } = useGamification();
+  const avatar = useCurrentStudentAvatar();
+  const stats = useCurrentStudentStats();
+  const changeAvatar = useStudentStore(state => state.changeAvatar);
   const [activeTab, setActiveTab] = useState<'hair' | 'eyes' | 'outfit' | 'background'>('hair');
 
   if (!isOpen) return null;

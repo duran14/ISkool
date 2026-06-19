@@ -4,7 +4,11 @@
 -- Enable UUID extension
 create extension if not exists "uuid-ossp";
 
--- 1. Profiles (extends auth.users)
+/**
+ * @table profiles
+ * @description Almacena la información de perfil para todos los roles de usuario en el sistema.
+ * @relation Extiende `auth.users` (1:1). Relación 1:1 con `students`. Referenciado en `teacher_assignments`, `parent_student`, `attendance`.
+ */
 create table public.profiles (
   id uuid references auth.users on delete cascade primary key,
   first_name text not null,
@@ -19,7 +23,11 @@ create table public.profiles (
 -- Enable RLS for Profiles
 alter table public.profiles enable row level security;
 
--- 2. Schools / Planteles
+/**
+ * @table schools
+ * @description Representa planteles o escuelas administradas bajo el sistema ISkool.
+ * @relation Raíz de datos escolares. Padre de `academic_years`, `groups`, `subjects`, `students`.
+ */
 create table public.schools (
   id uuid default uuid_generate_v4() primary key,
   name text not null,
@@ -31,7 +39,11 @@ create table public.schools (
 
 alter table public.schools enable row level security;
 
--- 3. Academic Years (Ciclos Escolares)
+/**
+ * @table academic_years
+ * @description Define los ciclos escolares anuales (e.g., 2025-2026).
+ * @relation Pertenece a `schools` (N:1). Padre de `academic_periods` y `groups`.
+ */
 create table public.academic_years (
   id uuid default uuid_generate_v4() primary key,
   school_id uuid references public.schools(id) on delete cascade not null,
@@ -44,7 +56,11 @@ create table public.academic_years (
 
 alter table public.academic_years enable row level security;
 
--- 4. Bimonthly Periods (Bimestres)
+/**
+ * @table academic_periods
+ * @description Bloques de evaluación formativa bimestral o semestral.
+ * @relation Pertenece a `academic_years` (N:1). Referenciado en `grades` (1:N).
+ */
 create table public.academic_periods (
   id uuid default uuid_generate_v4() primary key,
   academic_year_id uuid references public.academic_years(id) on delete cascade not null,
@@ -56,7 +72,11 @@ create table public.academic_periods (
 
 alter table public.academic_periods enable row level security;
 
--- 5. Levels and Grades (e.g. Primaria -> 1o, 2o, 3o)
+/**
+ * @table levels_grades
+ * @description Catálogo estático de niveles educativos y sus correspondientes grados académicos (SEP).
+ * @relation Padre de `groups` (1:N) y `subjects` (1:N).
+ */
 create table public.levels_grades (
   id uuid default uuid_generate_v4() primary key,
   level_name text not null check (level_name in ('primaria', 'secundaria', 'preparatoria')),
@@ -66,7 +86,11 @@ create table public.levels_grades (
 
 alter table public.levels_grades enable row level security;
 
--- 6. Groups / Salones (e.g. Primaria 1º A)
+/**
+ * @table groups
+ * @description Grupos y secciones asignadas a un grado escolar y plantel (e.g., 4º "A").
+ * @relation Vinculado a `schools` (N:1), `levels_grades` (N:1), y `academic_years` (N:1). Padre de `enrollments` y `teacher_assignments`.
+ */
 create table public.groups (
   id uuid default uuid_generate_v4() primary key,
   school_id uuid references public.schools(id) on delete cascade not null,
@@ -78,7 +102,11 @@ create table public.groups (
 
 alter table public.groups enable row level security;
 
--- 7. Subjects / Materias
+/**
+ * @table subjects
+ * @description Asignaturas curriculares oficiales o institucionales.
+ * @relation Vinculado a `schools` (N:1), `levels_grades` (N:1). Padre de `teacher_assignments`, `attendance`, `grades`, y `missions`.
+ */
 create table public.subjects (
   id uuid default uuid_generate_v4() primary key,
   school_id uuid references public.schools(id) on delete cascade not null,
@@ -90,7 +118,11 @@ create table public.subjects (
 
 alter table public.subjects enable row level security;
 
--- 8. Student Profiles (linked to profiles table)
+/**
+ * @table students
+ * @description Fichas académicas específicas para estudiantes.
+ * @relation Vinculado a `profiles` (1:1) y `schools` (N:1). Padre de `enrollments`, `attendance`, `grades`, `student_stats`, `student_avatars`.
+ */
 create table public.students (
   id uuid references public.profiles(id) on delete cascade primary key,
   school_id uuid references public.schools(id) on delete cascade not null,
@@ -102,7 +134,11 @@ create table public.students (
 
 alter table public.students enable row level security;
 
--- 9. Parent-Student Relationship
+/**
+ * @table parent_student
+ * @description Relación entre padres o tutores y sus respectivos hijos estudiantes.
+ * @relation Vincula `profiles` (N:1) (del padre/tutor) con `students` (N:1).
+ */
 create table public.parent_student (
   parent_id uuid references public.profiles(id) on delete cascade,
   student_id uuid references public.students(id) on delete cascade,
@@ -110,7 +146,11 @@ create table public.parent_student (
   primary key (parent_id, student_id)
 );
 
--- 10. Enrollments (maps students to a group for a specific academic year)
+/**
+ * @table enrollments
+ * @description Historial de inscripciones de estudiantes en grupos para ciclos específicos.
+ * @relation Vincula `students` (N:1) con `groups` (N:1).
+ */
 create table public.enrollments (
   id uuid default uuid_generate_v4() primary key,
   student_id uuid references public.students(id) on delete cascade not null,
@@ -120,7 +160,11 @@ create table public.enrollments (
 
 alter table public.enrollments enable row level security;
 
--- 11. Teacher Assignments
+/**
+ * @table teacher_assignments
+ * @description Mapeo de docentes a materias y grupos específicos (carga horaria).
+ * @relation Vincula `profiles` (N:1) (del docente), `groups` (N:1), y `subjects` (N:1).
+ */
 create table public.teacher_assignments (
   id uuid default uuid_generate_v4() primary key,
   teacher_id uuid references public.profiles(id) on delete cascade not null,
@@ -131,7 +175,11 @@ create table public.teacher_assignments (
 
 alter table public.teacher_assignments enable row level security;
 
--- 12. Attendance (Asistencia Diaria)
+/**
+ * @table attendance
+ * @description Asistencia diaria por grupo y materia.
+ * @relation Vincula `students` (N:1), `groups` (N:1), `subjects` (N:1) (opcional), y `profiles` (N:1) (del docente evaluador).
+ */
 create table public.attendance (
   id uuid default uuid_generate_v4() primary key,
   student_id uuid references public.students(id) on delete cascade not null,
@@ -146,7 +194,11 @@ create table public.attendance (
 
 alter table public.attendance enable row level security;
 
--- 13. Grades (Calificaciones)
+/**
+ * @table grades
+ * @description Calificaciones cuantitativas de exámenes u ordinarias (SEP).
+ * @relation Vincula `students` (N:1), `subjects` (N:1), y `academic_periods` (N:1).
+ */
 create table public.grades (
   id uuid default uuid_generate_v4() primary key,
   student_id uuid references public.students(id) on delete cascade not null,

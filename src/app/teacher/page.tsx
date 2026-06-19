@@ -1,7 +1,11 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore } from '@/store/useStudentStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useGamificationStore } from '@/store/useGamificationStore';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
+import { TEACHER_SEED, SUBJECTS_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { 
   FileImage, Mic, MicOff, HelpCircle, CheckCircle2, 
@@ -72,29 +76,44 @@ const RUBRIC_CRITERIA = [
   }
 ];
 
+import { useAuth } from '@/context/AuthContext';
+import { useRouter } from 'next/navigation';
+
 export default function TeacherDashboard() {
-  const { 
-    portfolioItems, 
-    reviewPortfolioItem, 
-    currentTeacher, 
-    detailedStudents, 
-    schedulesList, 
-    groupsList,
-    subjects,
-    missions,
-    attendanceList,
-    parentMessages,
-    saveAttendanceList,
-    sendParentMessage,
-    saveQuest,
-    linkPortfolioItemToQuest,
-    submitPortfolioItemOnBehalf,
-    shopArtifacts,
-    studentInventoryMap,
-    grantArtifact,
-    revokeArtifact,
-    createArtifact
-  } = useGamification();
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
+  const currentTeacher = TEACHER_SEED;
+  const subjects = SUBJECTS_SEED;
+
+  const portfolioItems = usePortfolioStore(state => state.portfolioItems);
+  const reviewPortfolioItem = usePortfolioStore(state => state.reviewPortfolioItem);
+  const linkPortfolioItemToQuest = usePortfolioStore(state => state.linkPortfolioItemToQuest);
+  const submitPortfolioItemOnBehalf = usePortfolioStore(state => state.submitPortfolioItemOnBehalf);
+  const fetchPortfolioItems = usePortfolioStore(state => state.fetchPortfolioItems);
+  const fetchStats = useStudentStore(state => state.fetchStats);
+
+  const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
+  const schedulesList = useSchoolAdminStore(state => state.schedulesList);
+  const groupsList = useSchoolAdminStore(state => state.groupsList);
+  const attendanceList = useSchoolAdminStore(state => state.attendanceList);
+  const parentMessages = useSchoolAdminStore(state => state.parentMessages);
+  const saveAttendanceList = useSchoolAdminStore(state => state.saveAttendanceList);
+  const sendParentMessage = useSchoolAdminStore(state => state.sendParentMessage);
+
+  const missions = useGamificationStore(state => state.missionsList);
+  const saveQuest = useGamificationStore(state => state.saveQuest);
+  const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
+  const createArtifact = useGamificationStore(state => state.createArtifact);
+
+  const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
+  const grantArtifact = async (studentId: string, artifactId: string) => {
+    await useStudentStore.getState().grantArtifact(studentId, artifactId);
+  };
+
+  const revokeArtifact = async (studentId: string, artifactId: string, reason: string) => {
+    await useStudentStore.getState().revokeArtifact(studentId, artifactId, reason);
+  };
 
   // Expediente escolar detallado
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
@@ -382,6 +401,32 @@ export default function TeacherDashboard() {
     }
     return () => clearInterval(interval);
   }, [isRecording]);
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'teacher') {
+      const activeGroup = currentMenuTab === 'attendance' ? selectedAttendanceGroup : selectedTaskGroup;
+      const groupToFetch = activeGroup || selectedAttendanceGroup || 'grp-pa-a';
+      fetchPortfolioItems(groupToFetch);
+      fetchStats(groupToFetch);
+    }
+  }, [user, currentMenuTab, selectedAttendanceGroup, selectedTaskGroup, fetchPortfolioItems, fetchStats]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Selección de criterio de rúbrica
   const handleRubricSelect = (criterionKey: string, levelKey: string) => {

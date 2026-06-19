@@ -2,6 +2,12 @@
 -- Database: PostgreSQL (Supabase)
 
 -- 1. Student Stats (Experiencia, nivel, rachas y atributos de RPG para Secundaria)
+/**
+ * @table student_stats
+ * @description Almacena las estadísticas de gamificación y progresión de nivel de un estudiante. Contiene datos de RPG (Secundaria) y financiamiento (Preparatoria).
+ * @relation Vinculado a `public.students` (1:1) mediante `student_id` con cascada de eliminación.
+ * @stateImpact Cargado y administrado por `useStudentStore` (`stats`, `activeStudentId`). Actualizado al ganar XP/Coins o gastar skill_points.
+ */
 create table public.student_stats (
   student_id uuid references public.students(id) on delete cascade primary key,
   xp integer default 0 not null check (xp >= 0),
@@ -27,6 +33,12 @@ create table public.student_stats (
 alter table public.student_stats enable row level security;
 
 -- 2. Student Avatars (Personalización de Avatar y Mascota para Primaria Baja)
+/**
+ * @table student_avatars
+ * @description Configuración estética del avatar del alumno (personalización) y estado de su mascota virtual (exclusivo para Primaria Baja).
+ * @relation Vinculado a `public.students` (1:1) mediante `student_id` con cascada de eliminación.
+ * @stateImpact Leído y modificado en `useStudentStore` mediante `changeAvatar` y actualización de mascota.
+ */
 create table public.student_avatars (
   student_id uuid references public.students(id) on delete cascade primary key,
   avatar_name text not null default 'Explorador',
@@ -51,6 +63,12 @@ create table public.student_avatars (
 alter table public.student_avatars enable row level security;
 
 -- 3. Badges / Insignias (Catálogo)
+/**
+ * @table badges
+ * @description Catálogo global de insignias y medallas académicas, sociales, de persistencia y creativas.
+ * @relation Referenciado por `public.student_badges` (1:N) para mapear medallas ganadas.
+ * @stateImpact Listado global en la tienda de medallas de `useGamificationStore` (`badges`).
+ */
 create table public.badges (
   id uuid default uuid_generate_v4() primary key,
   name text not null,
@@ -64,6 +82,12 @@ create table public.badges (
 alter table public.badges enable row level security;
 
 -- 4. Student Badges (Relación de insignias obtenidas)
+/**
+ * @table student_badges
+ * @description Relación de unión que registra qué insignias ha obtenido cada estudiante y la fecha de obtención.
+ * @relation Vincula `public.students` (N:1) y `public.badges` (N:1).
+ * @stateImpact Administrado y actualizado por `unlockBadge` en `useGamificationStore`.
+ */
 create table public.student_badges (
   student_id uuid references public.students(id) on delete cascade not null,
   badge_id uuid references public.badges(id) on delete cascade not null,
@@ -74,6 +98,12 @@ create table public.student_badges (
 alter table public.student_badges enable row level security;
 
 -- 5. Missions / Misiones Académicas (Narrativa de aprendizaje)
+/**
+ * @table missions
+ * @description Misión del mapa de aprendizaje narrativo de una materia para un grado específico.
+ * @relation Pertenece a `public.schools` (N:1), `public.subjects` (N:1), y `public.levels_grades` (N:1). Padre de `public.quests` (1:N).
+ * @stateImpact Cargado dinámicamente mediante `fetchMissions` en `useGamificationStore` (`missions`).
+ */
 create table public.missions (
   id uuid default uuid_generate_v4() primary key,
   school_id uuid references public.schools(id) on delete cascade not null,
@@ -91,6 +121,12 @@ create table public.missions (
 alter table public.missions enable row level security;
 
 -- 6. Quests / Retos (Actividades dentro de una misión)
+/**
+ * @table quests
+ * @description Reto o actividad académica (cuestionario, examen o entrega de portafolio) dentro de una misión.
+ * @relation Pertenece a `public.missions` (N:1). Referenciado por `public.quest_attempts` (1:N) y `public.portfolio_items` (1:N).
+ * @stateImpact Determina las preguntas, recompensas de XP/monedas y formato de evidencias renderizados en la UI.
+ */
 create table public.quests (
   id uuid default uuid_generate_v4() primary key,
   mission_id uuid references public.missions(id) on delete cascade not null,
@@ -108,6 +144,12 @@ create table public.quests (
 alter table public.quests enable row level security;
 
 -- 7. Quest Attempts (Intentos y reintentos - El error como aprendizaje)
+/**
+ * @table quest_attempts
+ * @description Registro histórico de los intentos realizados por un estudiante para resolver un reto (quest). Permite registrar el progreso, respuestas y feedback.
+ * @relation Vincula `public.students` (N:1) y `public.quests` (N:1).
+ * @stateImpact Creado al completar un reto. Afecta los estados de `useGamificationStore` (`submitQuiz`, `submitExam`).
+ */
 create table public.quest_attempts (
   id uuid default uuid_generate_v4() primary key,
   student_id uuid references public.students(id) on delete cascade not null,
@@ -122,6 +164,12 @@ create table public.quest_attempts (
 alter table public.quest_attempts enable row level security;
 
 -- 8. Portfolio Items (Portafolio Digital de Evidencias - Seesaw-style)
+/**
+ * @table portfolio_items
+ * @description Portafolio digital de evidencias de aprendizaje (estilo Seesaw) donde los estudiantes suben tareas para evaluación docente.
+ * @relation Vincula `public.students` (N:1), `public.subjects` (N:1), y opcionalmente `public.quests` (N:1). Padre de `public.portfolio_feedback` (1:N).
+ * @stateImpact Administrado por `usePortfolioStore` (`portfolioItems`). Sujeto a políticas RLS por estudiante y por grupo para docentes.
+ */
 create table public.portfolio_items (
   id uuid default uuid_generate_v4() primary key,
   student_id uuid references public.students(id) on delete cascade not null,
@@ -145,6 +193,12 @@ create table public.portfolio_items (
 alter table public.portfolio_items enable row level security;
 
 -- 9. Portfolio Feedback (Retroalimentación Formativa - Multidireccional)
+/**
+ * @table portfolio_feedback
+ * @description Retroalimentación formativa y multidireccional (de profesores, padres o compañeros) a una evidencia del portafolio.
+ * @relation Pertenece a `public.portfolio_items` (N:1). Escrito por un perfil de usuario en `public.profiles` (N:1).
+ * @stateImpact Actualizado en tiempo real en la vista de evidencias en `usePortfolioStore` (`addPortfolioFeedback`).
+ */
 create table public.portfolio_feedback (
   id uuid default uuid_generate_v4() primary key,
   portfolio_item_id uuid references public.portfolio_items(id) on delete cascade not null,

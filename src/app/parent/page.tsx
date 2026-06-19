@@ -1,7 +1,10 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar, useCurrentStudentProfile } from '@/store/useStudentStore';
+import { usePortfolioStore } from '@/store/usePortfolioStore';
+import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
+import { PARENT_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { 
   Heart, MessageSquare, Send, CheckCircle2, 
@@ -11,11 +14,19 @@ import {
 import { FormattedDate } from '@/components/FormattedDate';
 
 export default function ParentDashboard() {
-  const { 
-    currentStudent, stats, avatar, portfolioItems, 
-    addPortfolioFeedback, addReaction, currentParent,
-    parentMessages, markMessageAsRead, replyToParentMessage
-  } = useGamification();
+  const currentStudent = useCurrentStudentProfile();
+  const stats = useCurrentStudentStats();
+  const avatar = useCurrentStudentAvatar();
+  
+  const portfolioItems = usePortfolioStore(state => state.portfolioItems);
+  const addPortfolioFeedback = usePortfolioStore(state => state.addPortfolioFeedback);
+  const addReaction = usePortfolioStore(state => state.addReaction);
+  
+  const parentMessages = useSchoolAdminStore(state => state.parentMessages);
+  const markMessageAsRead = useSchoolAdminStore(state => state.markMessageAsRead);
+  const replyToParentMessage = useSchoolAdminStore(state => state.replyToParentMessage);
+  
+  const currentParent = PARENT_SEED;
 
   const [parentComment, setParentComment] = useState<Record<string, string>>({});
   const [currentTab, setCurrentTab] = useState<'achievements' | 'messages'>('achievements');

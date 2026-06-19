@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useGamification } from '@/context/gamification-context';
+import { useStudentStore, useCurrentStudentAvatar } from '@/store/useStudentStore';
 import { AnimeAvatarSprite } from '@/components/AnimeAvatarSprite';
 import { Header } from '@/components/Header';
 import { 
@@ -10,10 +10,41 @@ import {
   Smile, Scissors, Eye, Wand2, Paintbrush, Flame, Info 
 } from 'lucide-react';
 
+import { useAuth } from '@/context/AuthContext';
+
 export default function AvatarCustomizerPage() {
   const router = useRouter();
-  const { avatar, changeAvatar, activeStudentId, studentInventoryMap } = useGamification();
+  const { user, loading } = useAuth();
+
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
+  const changeAvatar = useStudentStore(state => state.changeAvatar);
+  const fetchStats = useStudentStore(state => state.fetchStats);
+  const avatar = useCurrentStudentAvatar();
   const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchStats();
+    }
+  }, [user, fetchStats]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Local editing states initialized from current avatar settings
   const [gender, setGender] = useState<'male' | 'female'>('female');
