@@ -68,30 +68,30 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         answers: answers
       });
 
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         // Update quest attempts
         set((state) => ({
-          questAttempts: [response.new_attempt, ...state.questAttempts]
+          questAttempts: [response.data.new_attempt, ...state.questAttempts]
         }));
 
         // Update student store stats
         useStudentStore.setState((state) => ({
           allStats: {
             ...state.allStats,
-            [activeStudentId]: response.new_stats
+            [activeStudentId]: response.data.new_stats
           }
         }));
 
         // Update student badges
-        if (response.badge_earned) {
-          get().unlockBadge(activeStudentId, response.badge_earned.id);
+        if (response.data.badge_earned) {
+          get().unlockBadge(activeStudentId, response.data.badge_earned.id);
         }
 
         return {
-          xpEarned: response.xp_earned,
-          coinsEarned: response.coins_earned,
-          leveledUp: response.leveled_up,
-          badgeEarned: response.badge_earned
+          xpEarned: response.data.xp_earned,
+          coinsEarned: response.data.coins_earned,
+          leveledUp: response.data.leveled_up,
+          badgeEarned: response.data.badge_earned
         };
       }
     } catch (err: any) {
@@ -115,34 +115,34 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         custom_loot: customLoot
       });
 
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         // Update quest attempts
         set((state) => ({
-          questAttempts: [response.new_attempt, ...state.questAttempts]
+          questAttempts: [response.data.new_attempt, ...state.questAttempts]
         }));
 
         // Update student store stats & avatars
         useStudentStore.setState((state) => ({
           allStats: {
             ...state.allStats,
-            [activeStudentId]: response.new_stats
+            [activeStudentId]: response.data.new_stats
           },
           allAvatars: {
             ...state.allAvatars,
-            [activeStudentId]: response.new_avatar || state.allAvatars[activeStudentId]
+            [activeStudentId]: response.data.new_avatar || state.allAvatars[activeStudentId]
           }
         }));
 
         // Update student badges
-        if (response.badge_earned) {
-          get().unlockBadge(activeStudentId, response.badge_earned.id);
+        if (response.data.badge_earned) {
+          get().unlockBadge(activeStudentId, response.data.badge_earned.id);
         }
 
         return {
-          xpEarned: response.xp_earned,
-          coinsEarned: response.coins_earned,
-          leveledUp: response.leveled_up,
-          badgeEarned: response.badge_earned
+          xpEarned: response.data.xp_earned,
+          coinsEarned: response.data.coins_earned,
+          leveledUp: response.data.leveled_up,
+          badgeEarned: response.data.badge_earned
         };
       }
     } catch (err: any) {

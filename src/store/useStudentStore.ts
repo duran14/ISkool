@@ -54,7 +54,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
     };
     const email = emails[studentId];
     if (email) {
-      await supabase.auth.signInWithPassword({ email });
+      await supabase.auth.signInWithPassword({ email, password: 'ISkoolPassword2026!' });
       // Fetch stats to sync
       const response = await supabase.from('student_stats').select('*');
       if (response && response.data && response.data.length > 0) {
@@ -161,11 +161,11 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: activeStudentId,
         attribute_name: statName
       });
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         set((state) => ({
           allStats: {
             ...state.allStats,
-            [activeStudentId]: response.new_stats
+            [activeStudentId]: response.data.new_stats
           }
         }));
       }
@@ -180,17 +180,17 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: studentId,
         artifact_id: artifactId
       });
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         set((state) => ({
           allStats: {
             ...state.allStats,
-            [studentId]: response.new_stats
+            [studentId]: response.data.new_stats
           },
           studentInventoryMap: {
             ...state.studentInventoryMap,
-            [studentId]: response.new_inventory
+            [studentId]: response.data.new_inventory
           },
-          studentMessages: [response.new_message, ...state.studentMessages]
+          studentMessages: [response.data.new_message, ...state.studentMessages]
         }));
         alert(`¡Compraste el artefacto con éxito!`);
       }
@@ -205,13 +205,13 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: studentId,
         artifact_id: artifactId
       });
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         set((state) => ({
           studentInventoryMap: {
             ...state.studentInventoryMap,
-            [studentId]: response.new_inventory
+            [studentId]: response.data.new_inventory
           },
-          studentMessages: [response.new_message, ...state.studentMessages]
+          studentMessages: [response.data.new_message, ...state.studentMessages]
         }));
         alert("Artefacto otorgado con éxito.");
       }
@@ -227,13 +227,13 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         artifact_id: artifactId,
         reason: reason
       });
-      if (response && response.success) {
+      if (response && response.data && response.data.success) {
         set((state) => ({
           studentInventoryMap: {
             ...state.studentInventoryMap,
-            [studentId]: response.new_inventory
+            [studentId]: response.data.new_inventory
           },
-          studentMessages: [response.new_message, ...state.studentMessages]
+          studentMessages: [response.data.new_message, ...state.studentMessages]
         }));
         alert("Artefacto retirado e informe enviado al alumno.");
       }
