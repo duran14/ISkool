@@ -2,6 +2,35 @@ import { create } from 'zustand';
 import { SchoolSettings, DetailedStudent, Group, ClassSchedule, Attendance, ParentMessage } from '../types';
 import { DETAILED_STUDENTS_SEED, GROUPS_SEED, SCHEDULES_SEED, ATTENDANCE_SEED, PARENT_MESSAGES_SEED, TEACHER_SEED } from './seeds';
 import { useStudentStore } from './useStudentStore';
+import { supabase } from '@/lib/supabaseClient';
+
+const isUuid = (str?: string): boolean => {
+  if (!str) return false;
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
+const mapGroupIdToUuid = (id: string): string => {
+  if (isUuid(id)) return id;
+  if (id === 'grp-pb-a') return 'a00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e11';
+  if (id === 'grp-pa-a') return 'a00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e22';
+  if (id === 'grp-sec-a') return 'a00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e33';
+  if (id === 'grp-prep-a') return 'a00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e44';
+  
+  let hash1 = 0;
+  let hash2 = 0;
+  for (let i = 0; i < id.length; i++) {
+    hash1 = id.charCodeAt(i) + ((hash1 << 5) - hash1);
+    hash2 = id.charCodeAt(id.length - 1 - i) + ((hash2 << 5) - hash2);
+  }
+  let hex = '';
+  for (let i = 0; i < 4; i++) {
+    hex += ('00' + ((hash1 >> (i * 8)) & 0xff).toString(16)).slice(-2);
+  }
+  for (let i = 0; i < 2; i++) {
+    hex += ('00' + ((hash2 >> (i * 8)) & 0xff).toString(16)).slice(-2);
+  }
+  return 'a00a0eeb-9c0b-4ef8-bb6d-' + hex;
+};
 
 interface SchoolAdminStoreState {
   schoolSettings: SchoolSettings;
@@ -10,6 +39,7 @@ interface SchoolAdminStoreState {
   schedulesList: ClassSchedule[];
   attendanceList: Attendance[];
   parentMessages: ParentMessage[];
+  syncError: string | null;
 
   // Actions
   saveSchoolSettings: (settings: SchoolSettings) => void;
@@ -17,14 +47,16 @@ interface SchoolAdminStoreState {
   generateGroupsForGrade: (level: 'primaria' | 'secundaria' | 'preparatoria', grade: string, groupNames: string[]) => void;
   assignStudentToGroup: (studentId: string, groupId: string) => void;
   createSchedule: (scheduleData: Omit<ClassSchedule, 'id'>) => void;
-  deleteSchedule: (scheduleId: string) => void;
-  deleteGroup: (groupId: string) => void;
+  deleteSchedule: (scheduleId: string) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
   saveAttendanceList: (records: Omit<Attendance, 'id' | 'created_at' | 'registered_by'>[]) => void;
   sendParentMessage: (msg: Omit<ParentMessage, 'id' | 'sent_at' | 'is_read'>) => void;
   replyToParentMessage: (messageId: string, replyText: string) => void;
   markMessageAsRead: (messageId: string) => void;
   resetSchoolAdminStore: () => void;
 }
+
+let saveSettingsTimeout: NodeJS.Timeout | null = null;
 
 export const useSchoolAdminStore = create<SchoolAdminStoreState>((set, get) => ({
   schoolSettings: {
@@ -48,9 +80,48 @@ export const useSchoolAdminStore = create<SchoolAdminStoreState>((set, get) => (
   schedulesList: SCHEDULES_SEED,
   attendanceList: ATTENDANCE_SEED,
   parentMessages: PARENT_MESSAGES_SEED,
+  syncError: null,
 
   saveSchoolSettings: (settings) => {
-    set({ schoolSettings: settings });
+    // 1. Instantly update local state to keep typing lag-free
+    set({ schoolSettings: settings, syncError: null });
+
+    // 2. Clear any pending Supabase upsert
+    if (saveSettingsTimeout) {
+      clearTimeout(saveSettingsTimeout);
+    }
+
+    // 3. Debounce database sync to 1000ms after user stops typing
+    saveSettingsTimeout = setTimeout(async () => {
+      try {
+        const dbSettings = {
+          name: settings.name,
+          website: settings.website || '',
+          logo_url: settings.logoUrl || '',
+          cct: settings.cct || '',
+          address: settings.address || '',
+          phone: settings.phone || '',
+          coordinators: settings.coordinators || [],
+          teachers: settings.teachers || [],
+          theme_colors: settings.themeColors,
+          is_configured: settings.isConfigured
+        };
+
+        const { error } = await supabase
+          .from('school_settings')
+          .upsert({
+            id: '00000000-0000-0000-0000-000000000000',
+            ...dbSettings,
+            updated_at: new Date().toISOString()
+          });
+
+        if (error) throw new Error(error.message);
+      } catch (err) {
+        const errorMsg = err instanceof Error ? err.message : 'Error al guardar la configuración escolar';
+        console.error('Error saving school settings to Supabase:', err);
+        set({ syncError: errorMsg });
+      }
+    }, 1000);
   },
 
   registerStudent: (studentData) => {
@@ -106,18 +177,50 @@ export const useSchoolAdminStore = create<SchoolAdminStoreState>((set, get) => (
     }));
   },
 
-  deleteSchedule: (scheduleId) => {
-    set((state) => ({
-      schedulesList: state.schedulesList.filter(s => s.id !== scheduleId)
-    }));
+  deleteSchedule: async (scheduleId) => {
+    set({ syncError: null });
+    try {
+      const { error } = await supabase
+        .from('class_schedules')
+        .delete()
+        .eq('id', scheduleId);
+
+      if (error) throw new Error(error.message);
+
+      set((state) => ({
+        schedulesList: state.schedulesList.filter(s => s.id !== scheduleId)
+      }));
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Error al eliminar el horario';
+      console.error('Error deleting schedule:', err);
+      set({ syncError: errorMsg });
+      alert(`Error al eliminar el horario en Supabase: ${errorMsg}`);
+    }
   },
 
-  deleteGroup: (groupId) => {
-    set((state) => ({
-      groupsList: state.groupsList.filter(g => g.id !== groupId),
-      detailedStudents: state.detailedStudents.map(s => s.group_id === groupId ? { ...s, group_id: undefined } : s),
-      schedulesList: state.schedulesList.filter(s => s.groupId !== groupId)
-    }));
+  deleteGroup: async (groupId) => {
+    set({ syncError: null });
+    try {
+      const uuid = mapGroupIdToUuid(groupId);
+      
+      const { error } = await supabase
+        .from('groups')
+        .delete()
+        .eq('id', uuid);
+
+      if (error) throw new Error(error.message);
+
+      set((state) => ({
+        groupsList: state.groupsList.filter(g => g.id !== groupId),
+        detailedStudents: state.detailedStudents.map(s => s.group_id === groupId ? { ...s, group_id: undefined } : s),
+        schedulesList: state.schedulesList.filter(s => s.groupId !== groupId)
+      }));
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : 'Error al eliminar el grupo';
+      console.error('Error deleting group:', err);
+      set({ syncError: errorMsg });
+      alert(`Error al eliminar el grupo en Supabase: ${errorMsg}`);
+    }
   },
 
   saveAttendanceList: (records) => {
@@ -207,7 +310,8 @@ export const useSchoolAdminStore = create<SchoolAdminStoreState>((set, get) => (
       groupsList: GROUPS_SEED,
       schedulesList: SCHEDULES_SEED,
       attendanceList: ATTENDANCE_SEED,
-      parentMessages: PARENT_MESSAGES_SEED
+      parentMessages: PARENT_MESSAGES_SEED,
+      syncError: null
     });
   }
 }));

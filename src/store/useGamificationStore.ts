@@ -166,14 +166,17 @@ interface GamificationStoreState {
   }>;
   
   saveQuest: (subjectId: string, questData: Omit<Quest, 'created_at'> & { id?: string }) => Promise<void>;
-  triggerGuildAttack: (damage: number) => void;
+  triggerGuildAttack: (damage: number) => Promise<void>;
   resetGuildBoss: () => void;
   submitGuildHomework: (studentId: string, onTime: boolean) => void;
   createArtifact: (artifactData: Omit<ShopArtifact, 'id'>) => Promise<void>;
   unlockBadge: (studentId: string, badgeId: string) => Promise<void>;
   fetchMissions: () => Promise<void>;
+  fetchActiveGuildBoss: () => Promise<void>;
+  subscribeToGuildChanges: () => () => void;
   resetGamificationStore: () => void;
 }
+
 
 export const useGamificationStore = create<GamificationStoreState>((set, get) => ({
   missionsList: MISSIONS_SEED,
@@ -182,8 +185,8 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
     { student_id: 'std-pa', badge_id: 'badge-1', earned_at: new Date().toISOString() },
     { student_id: 'std-sec', badge_id: 'badge-3', earned_at: new Date().toISOString() }
   ],
-  guildBoss: BOSS_SEED,
-  guildSubmissions: GUILD_SUBMISSIONS_SEED,
+  guildBoss: { id: '', name: 'Cargando Jefe...', hp_max: 1, hp_actual: 1, xp_reward: 0 },
+  guildSubmissions: [],
   shopArtifacts: DEFAULT_ARTIFACTS_SEED,
   isLoadingMissions: false,
   syncError: null,
@@ -391,21 +394,62 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
     }
   },
 
-  triggerGuildAttack: (damage) => {
-    set((state) => {
-      const newHp = Math.max(0, state.guildBoss.hp_actual - damage);
-      return {
+  triggerGuildAttack: async (damage) => {
+    try {
+      // 1. Try with RPC first
+      const { data, error } = await supabase.rpc('trigger_guild_attack', {
+        damage_amount: damage
+      });
+
+      if (!error && data && data.success) {
+        set({
+          guildBoss: {
+            id: data.id,
+            name: data.name,
+            hp_max: data.hp_max,
+            hp_actual: data.hp_actual,
+            xp_reward: data.xp_reward
+          }
+        });
+        return;
+      }
+    } catch (err) {
+      console.warn('RPC trigger_guild_attack failed, falling back to direct update:', err);
+    }
+
+    // Fallback: Direct UPDATE
+    try {
+      const currentBoss = get().guildBoss;
+      const newHp = Math.max(0, currentBoss.hp_actual - damage);
+      
+      const { error } = await supabase
+        .from('guild_bosses')
+        .update({ hp_actual: newHp })
+        .eq('id', 'boss-historia');
+
+      if (error) throw error;
+
+      set((state) => ({
         guildBoss: {
           ...state.guildBoss,
           hp_actual: newHp
         }
-      };
-    });
+      }));
+    } catch (err) {
+      console.error('Error in fallback guild attack:', err);
+    }
   },
 
   resetGuildBoss: () => {
+    supabase
+      .from('guild_bosses')
+      .update({ hp_actual: 150 })
+      .eq('id', 'boss-historia')
+      .then(({ error }) => {
+        if (error) console.error('Error resetting guild boss on Supabase:', error);
+      });
     set({
-      guildBoss: BOSS_SEED,
+      guildBoss: { ...BOSS_SEED, hp_actual: 150 },
       guildSubmissions: GUILD_SUBMISSIONS_SEED
     });
   },
@@ -423,6 +467,58 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         return member;
       })
     }));
+  },
+
+  fetchActiveGuildBoss: async () => {
+    try {
+      const { data, error } = await supabase
+        .from('guild_bosses')
+        .select('*')
+        .eq('id', 'boss-historia')
+        .maybeSingle();
+
+      if (error) throw error;
+
+      if (data) {
+        set({ guildBoss: data as GuildBoss });
+      } else {
+        const { error: insertError } = await supabase
+          .from('guild_bosses')
+          .insert({
+            id: 'boss-historia',
+            name: 'Guardián de Historia',
+            hp_max: 200,
+            hp_actual: 150,
+            xp_reward: 500
+          });
+        if (insertError) throw insertError;
+        set({ guildBoss: { id: 'boss-historia', name: 'Guardián de Historia', hp_max: 200, hp_actual: 150, xp_reward: 500 } });
+      }
+    } catch (err) {
+      console.error('Error fetching active guild boss:', err);
+    }
+  },
+
+  subscribeToGuildChanges: () => {
+    const channel = supabase
+      .channel('guild_events')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'guild_bosses' },
+        (payload) => {
+          console.log('Realtime update received for guild boss:', payload);
+          if (payload.new) {
+            set({ guildBoss: payload.new as GuildBoss });
+          }
+        }
+      )
+      .subscribe((status) => {
+        console.log('Supabase Realtime subscription status:', status);
+      });
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   },
 
   createArtifact: async (artifactData) => {
@@ -535,8 +631,8 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         { student_id: 'std-pa', badge_id: 'badge-1', earned_at: new Date().toISOString() },
         { student_id: 'std-sec', badge_id: 'badge-3', earned_at: new Date().toISOString() }
       ],
-      guildBoss: BOSS_SEED,
-      guildSubmissions: GUILD_SUBMISSIONS_SEED,
+      guildBoss: { id: '', name: 'Cargando Jefe...', hp_max: 1, hp_actual: 1, xp_reward: 0 },
+      guildSubmissions: [],
       shopArtifacts: DEFAULT_ARTIFACTS_SEED,
       isLoadingMissions: false,
       syncError: null

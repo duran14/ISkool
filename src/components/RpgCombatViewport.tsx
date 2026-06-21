@@ -345,6 +345,10 @@ export function RpgCombatViewport() {
   const questAttempts = useGamificationStore(state => state.questAttempts);
   const submitExam = useGamificationStore(state => state.submitExam);
   const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
+  const guildBoss = useGamificationStore(state => state.guildBoss);
+  const triggerGuildAttack = useGamificationStore(state => state.triggerGuildAttack);
+  const fetchActiveGuildBoss = useGamificationStore(state => state.fetchActiveGuildBoss);
+  const subscribeToGuildChanges = useGamificationStore(state => state.subscribeToGuildChanges);
 
   const activeStudentId = useStudentStore(state => state.activeStudentId);
   const studentInventoryMap = useStudentStore(state => state.studentInventoryMap);
@@ -417,6 +421,23 @@ export function RpgCombatViewport() {
   const [bossMaxHp, setBossMaxHp] = useState(180);
   const [combatState, setCombatState] = useState<'idle' | 'player_attack' | 'boss_attack' | 'boss_hurt' | 'player_hurt' | 'victory' | 'defeat'>('idle');
   
+  // Sincronización en tiempo real del jefe de gremio
+  useEffect(() => {
+    fetchActiveGuildBoss();
+    const unsubscribe = subscribeToGuildChanges();
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [fetchActiveGuildBoss, subscribeToGuildChanges]);
+
+  // Actualizar HP local cuando el jefe cambie en tiempo real en el store
+  useEffect(() => {
+    if (guildBoss && guildBoss.id) {
+      setBossHp(guildBoss.hp_actual);
+      setBossMaxHp(guildBoss.hp_max);
+    }
+  }, [guildBoss]);
+  
   // Retries e Inventario
   const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
   const ownedArtifacts = shopArtifacts.filter(a => ownedArtifactIds.includes(a.id));
@@ -439,8 +460,13 @@ export function RpgCombatViewport() {
     setCombatState('idle');
     setTurnCount(0);
     setPlayerHp(100);
-    setBossHp(examContent?.bossHp || 150);
-    setBossMaxHp(examContent?.bossHp || 150);
+    if (guildBoss && guildBoss.id) {
+      setBossHp(guildBoss.hp_actual);
+      setBossMaxHp(guildBoss.hp_max);
+    } else {
+      setBossHp(examContent?.bossHp || 150);
+      setBossMaxHp(examContent?.bossHp || 150);
+    }
     setUsedAttempts(0);
     setActiveShield(false);
     setBonusDamage(0);
@@ -450,8 +476,13 @@ export function RpgCombatViewport() {
 
   const startFight = () => {
     setPlayerHp(100);
-    setBossHp(examContent?.bossHp || 150);
-    setBossMaxHp(examContent?.bossHp || 150);
+    if (guildBoss && guildBoss.id) {
+      setBossHp(guildBoss.hp_actual);
+      setBossMaxHp(guildBoss.hp_max);
+    } else {
+      setBossHp(examContent?.bossHp || 150);
+      setBossMaxHp(examContent?.bossHp || 150);
+    }
     setTurnCount(1);
     setActiveShield(false);
     setBonusDamage(0);
@@ -498,6 +529,7 @@ export function RpgCombatViewport() {
       
       const newBossHp = Math.max(0, bossHp - finalDamage);
       setBossHp(newBossHp);
+      triggerGuildAttack(finalDamage);
       setDamageNumber({ amount: finalDamage, isBoss: true });
       playSound('laser');
       setCombatState('boss_hurt');
