@@ -44,17 +44,6 @@ export default function TeacherGrades() {
     }
   }, [user, fetchPortfolioItems, fetchStats]);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
   const [selectedStudent, setSelectedStudent] = useState<DetailedStudent | null>(null);
 
   const formatStudentName = (student: DetailedStudent | { first_name: string; last_name: string; second_name?: string; last_name_1?: string; last_name_2?: string }) => {
@@ -93,6 +82,17 @@ export default function TeacherGrades() {
     'std-prep': 'Gran rol como coevaluador de proyectos. Sus análisis demuestran madurez técnica.'
   });
   const [gradesSaved, setGradesSaved] = useState<Record<string, boolean>>({});
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Función para calcular la calificación SEP formativa (escala 5.0 a 10.0)
   const calculateSepGrade = (studentId: string) => {

@@ -17,6 +17,7 @@ export default function RootLayout({
     <html
       lang="es"
       className="h-full antialiased"
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50">
         <ThemeSync />

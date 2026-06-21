@@ -51,17 +51,6 @@ export default function StudentDashboard() {
     }
   }, [user, fetchStats, fetchPortfolioItems, fetchMissions]);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
   const purchaseArtifact = async (studentId: string, artifactId: string) => {
     await useStudentStore.getState().purchaseArtifact(studentId, artifactId);
   };
@@ -94,6 +83,17 @@ export default function StudentDashboard() {
 
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   React.useEffect(() => {
     if (typeof window !== 'undefined' && activeLevel === 'secundaria') {

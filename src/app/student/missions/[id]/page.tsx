@@ -48,17 +48,6 @@ export default function MissionPage({ params }: MissionPageProps) {
     }
   }, [user, fetchStats, fetchMissions]);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Buscar misión
   const mission = missions.find(m => m.id === id);
   
@@ -96,6 +85,17 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [evidenceReflection, setEvidenceReflection] = useState('');
   const [mockFile, setMockFile] = useState<{ url: string, type: string } | null>(null);
   const [isSubmissionFinished, setIsSubmissionFinished] = useState(false);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Temporizador de Cuestionario
   useEffect(() => {

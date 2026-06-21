@@ -38,17 +38,6 @@ export default function MagicShopPage() {
     }
   }, [user, fetchStats]);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
   const shopArtifacts = useGamificationStore(state => state.shopArtifacts);
 
   const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
@@ -60,6 +49,17 @@ export default function MagicShopPage() {
   const [fairyDialogue, setFairyDialogue] = useState(defaultDialogue);
   const [tempDialogueTimeout, setTempDialogueTimeout] = useState<NodeJS.Timeout | null>(null);
   const [isPurchasing, setIsPurchasing] = useState(false);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Helper to trigger temporary fairy dialogue
   const triggerFairyReaction = (text: string) => {
