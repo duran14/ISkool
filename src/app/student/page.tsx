@@ -84,6 +84,15 @@ export default function StudentDashboard() {
   const [showTour, setShowTour] = useState(false);
   const [tourStep, setTourStep] = useState(0);
 
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && activeLevel === 'secundaria') {
+      const completed = localStorage.getItem('iskool_rpg_tour_completed');
+      if (!completed) {
+        setShowTour(true);
+      }
+    }
+  }, [activeLevel]);
+
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
@@ -95,14 +104,6 @@ export default function StudentDashboard() {
     );
   }
 
-  React.useEffect(() => {
-    if (typeof window !== 'undefined' && activeLevel === 'secundaria') {
-      const completed = localStorage.getItem('iskool_rpg_tour_completed');
-      if (!completed) {
-        setShowTour(true);
-      }
-    }
-  }, [activeLevel]);
 
   // Calcular el progreso del nivel
   const xpForCurrentLevel = stats.level * 200;

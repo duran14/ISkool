@@ -807,155 +807,111 @@ export function RpgCombatViewport() {
             </div>
           )}
 
-          {/* LADO IZQUIERDO: ALUMNOS (SPRITES) */}
-          <div className="flex flex-col gap-4 z-20">
-            {/* Elena (Mage) */}
-            <div className={`flex items-center gap-3 relative jrpg-idle ${combatState === 'player_attack' ? 'translate-x-12 scale-110 duration-200' : 'duration-500'}`}>
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-800 to-indigo-900 p-0.5 border border-purple-500/40 relative shadow-lg shadow-purple-950/30">
-                <AnimeAvatarSprite 
-                  gender={avatar.gender || 'female'}
-                  rpgClass={avatar.rpg_class || 'mago'}
-                  headType={avatar.head_type || 'standard'}
-                  skinTone={avatar.skin_tone || 'light'}
-                  hairColor={avatar.hair_color || 'pink'}
-                  hairStyle={avatar.hair_style || 'hat'}
-                  equippedArtifacts={ownedArtifactIds}
-                  className="w-full h-full"
+          {/* LADO IZQUIERDO: ALUMNOS (HUD SIN BORDES INTEGRADO DE ALTA FIDELIDAD) */}
+          <div className="flex items-end gap-6 z-20 self-end mb-2">
+            {/* Elena (Mago) */}
+            <div className={`flex items-end gap-3 relative jrpg-idle ${combatState === 'player_attack' ? 'translate-x-6 -translate-y-4 scale-110 duration-200' : 'duration-500'}`}>
+              <div className="relative h-28 w-24 overflow-visible">
+                <img 
+                  src="/images/rpg/elena_sprite.png" 
+                  alt="Elena (Sage)" 
+                  className="w-full h-full object-contain filter drop-shadow-[0_6px_8px_rgba(0,0,0,0.65)]"
                 />
-                {/* Visualizador de HP */}
-                <div className="absolute -bottom-1 left-0 right-0 h-1.5 bg-zinc-950 border border-zinc-800 rounded-full overflow-hidden">
-                  <div className="h-full bg-purple-500" style={{ width: `${playerHp}%` }} />
+              </div>
+              <div className="flex flex-col mb-1 text-left select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] min-w-[70px] gap-1">
+                <span className="text-[10px] font-black uppercase text-purple-300 tracking-wider">Elena</span>
+                {/* HP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-zinc-200 font-mono">
+                    <span>HP</span>
+                    <span>{playerHp}/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 transition-all duration-300" style={{ width: `${playerHp}%` }} />
+                  </div>
+                </div>
+                {/* MP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-cyan-400 font-mono">
+                    <span>MP</span>
+                    <span>85/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: '85%' }} />
+                  </div>
                 </div>
               </div>
-              <div>
-                <span className="text-[10px] font-black uppercase text-purple-300 tracking-wider block">Elena (Sage)</span>
-                <span className="text-[8px] font-bold text-zinc-400 block font-mono">HP: {playerHp}/100</span>
+            </div>
+
+            {/* Santi (Guerrero) */}
+            <div className="flex items-end gap-3 relative jrpg-idle opacity-95">
+              <div className="relative h-28 w-24 overflow-visible">
+                <img 
+                  src="/images/rpg/santi_sprite.png" 
+                  alt="Santi (Warrior)" 
+                  className="w-full h-full object-contain filter drop-shadow-[0_6px_8px_rgba(0,0,0,0.65)]"
+                />
+              </div>
+              <div className="flex flex-col mb-1 text-left select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] min-w-[70px] gap-1">
+                <span className="text-[10px] font-black uppercase text-rose-300 tracking-wider">Santi</span>
+                {/* HP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-zinc-200 font-mono">
+                    <span>HP</span>
+                    <span>100/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-rose-500 to-red-500" style={{ width: '100%' }} />
+                  </div>
+                </div>
+                {/* MP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-cyan-400 font-mono">
+                    <span>MP</span>
+                    <span>65/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: '65%' }} />
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Santi (Warrior) */}
-            <div className="flex items-center gap-3 relative jrpg-idle opacity-85">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-rose-800 to-red-950 p-0.5 border border-rose-500/30">
-                <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-                  {/* Shadow */}
-                  <ellipse cx="50" cy="86" rx="26" ry="5" fill="#000" opacity="0.35" />
-
-                  {/* Blue Steel Plate Tunic */}
-                  <path d="M 28 85 L 35 52 Q 50 46 65 52 L 72 85 Z" fill="#1E3A8A" stroke="#3B82F6" strokeWidth="1" />
-                  {/* Shoulder pads */}
-                  <path d="M 25 54 Q 30 46 38 52 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="0.8" />
-                  <path d="M 75 54 Q 70 46 62 52 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="0.8" />
-                  {/* Chest plate armor */}
-                  <rect x="42" y="55" width="16" height="30" fill="#9CA3AF" stroke="#D1D5DB" strokeWidth="0.8" rx="1" />
-                  <circle cx="50" cy="65" r="2.5" fill="#EF4444" /> {/* Red Core Gem */}
-
-                  {/* Face & Neck */}
-                  <rect x="46" y="50" width="8" height="6" fill="#FED7AA" />
-                  <path d="M 36 34 C 36 34, 34 46, 50 53 C 66 46, 64 34, 64 34 Z" fill="#FED7AA" />
-                  
-                  {/* Blush */}
-                  <ellipse cx="42" cy="44" rx="2" ry="1" fill="#F43F5E" opacity="0.4" />
-                  <ellipse cx="58" cy="44" rx="2" ry="1" fill="#F43F5E" opacity="0.4" />
-
-                  {/* Confident blue anime eyes */}
-                  <ellipse cx="44" cy="40" rx="2.5" ry="4" fill="#1D4ED8" />
-                  <circle cx="43" cy="38" r="0.8" fill="#FFF" />
-                  <ellipse cx="56" cy="40" rx="2.5" ry="4" fill="#1D4ED8" />
-                  <circle cx="55" cy="38" r="0.8" fill="#FFF" />
-                  
-                  {/* Sharp eyebrows */}
-                  <path d="M 39 34 L 46 36" stroke="#451A03" strokeWidth="1.5" strokeLinecap="round" />
-                  <path d="M 61 34 L 54 36" stroke="#451A03" strokeWidth="1.5" strokeLinecap="round" />
-                  
-                  {/* Smile */}
-                  <path d="M 48 47 Q 50 49 52 47" stroke="#000" strokeWidth="0.8" fill="none" />
-
-                  {/* Spiky Brown Anime Hair (JRPG style) */}
-                  <g id="santi-hair">
-                    <path d="M 33 34 C 31 22, 22 30, 20 18 C 26 23, 28 14, 36 24 C 38 12, 44 20, 50 8 C 56 20, 62 12, 64 24 C 72 14, 74 23, 80 18 C 78 30, 69 22, 67 34 Z" fill="#78350F" stroke="#451A03" strokeWidth="0.8" />
-                    {/* Front hair strands */}
-                    <path d="M 38 34 Q 42 41 43 41 Q 44 32 45 28 Z" fill="#8b4513" />
-                    <path d="M 62 34 Q 58 41 57 41 Q 56 32 55 28 Z" fill="#8b4513" />
-                  </g>
-
-                  {/* Iron Warrior Sword */}
-                  <g id="santi-sword" transform="translate(10, 5) rotate(10)">
-                    <line x1="62" y1="80" x2="76" y2="40" stroke="#B5B5B5" strokeWidth="3" strokeLinecap="round" />
-                    <line x1="62" y1="80" x2="76" y2="40" stroke="#FFF" strokeWidth="1" strokeLinecap="round" /> {/* Shininess */}
-                    <polygon points="74,42 78,35 79,41" fill="#FFF" />
-                    {/* Gold guard & grip */}
-                    <rect x="58" y="77" width="8" height="3" fill="#D97706" transform="rotate(22 58 77)" />
-                    <line x1="59" y1="79" x2="56" y2="85" stroke="#78350F" strokeWidth="2.5" />
-                  </g>
-                </svg>
+            {/* Lucas (Explorador) */}
+            <div className="flex items-end gap-3 relative jrpg-idle opacity-90">
+              <div className="relative h-28 w-24 overflow-visible">
+                <img 
+                  src="/images/rpg/lucas_sprite.png" 
+                  alt="Lucas (Scout)" 
+                  className="w-full h-full object-contain filter drop-shadow-[0_6px_8px_rgba(0,0,0,0.65)]"
+                />
               </div>
-              <div>
-                <span className="text-[9px] font-extrabold uppercase text-rose-300 block">Santi (Guerrero)</span>
-                <span className="text-[8px] font-semibold text-zinc-400 block font-mono">HP: 100%</span>
-              </div>
-            </div>
-
-            {/* Lucas (Scout) */}
-            <div className="flex items-center gap-3 relative jrpg-idle opacity-80">
-              <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-emerald-800 to-teal-950 p-0.5 border border-emerald-500/30">
-                <svg viewBox="0 0 100 100" className="w-full h-full overflow-visible">
-                  {/* Shadow */}
-                  <ellipse cx="50" cy="86" rx="26" ry="5" fill="#000" opacity="0.35" />
-
-                  {/* Scout Forest Tunic */}
-                  <path d="M 28 85 L 35 52 Q 50 46 65 52 L 72 85 Z" fill="#064E3B" stroke="#059669" strokeWidth="1" />
-                  {/* Leather vest straps */}
-                  <line x1="37" y1="52" x2="63" y2="85" stroke="#78350F" strokeWidth="2" />
-                  <line x1="63" y1="52" x2="37" y2="85" stroke="#78350F" strokeWidth="2" />
-
-                  {/* Flowing Cape (Back) */}
-                  <path d="M 28 54 C 18 58, 14 78, 16 85 C 22 82, 30 70, 30 54" fill="#047857" />
-
-                  {/* Face & Neck */}
-                  <rect x="46" y="50" width="8" height="6" fill="#FED7AA" />
-                  <path d="M 36 34 C 36 34, 34 46, 50 53 C 66 46, 64 34, 64 34 Z" fill="#FED7AA" />
-                  
-                  {/* Blush */}
-                  <ellipse cx="42" cy="44" rx="2" ry="1" fill="#F43F5E" opacity="0.4" />
-                  <ellipse cx="58" cy="44" rx="2" ry="1" fill="#F43F5E" opacity="0.4" />
-
-                  {/* Large Green Scout Anime Eyes */}
-                  <ellipse cx="44" cy="40" rx="2.5" ry="4" fill="#047857" />
-                  <circle cx="43" cy="38" r="0.8" fill="#FFF" />
-                  <ellipse cx="56" cy="40" rx="2.5" ry="4" fill="#047857" />
-                  <circle cx="55" cy="38" r="0.8" fill="#FFF" />
-                  
-                  {/* Eyebrows */}
-                  <path d="M 39 35 Q 43 33 46 35" stroke="#78350F" strokeWidth="1" fill="none" />
-                  <path d="M 61 35 Q 57 33 54 35" stroke="#78350F" strokeWidth="1" fill="none" />
-
-                  {/* Smile */}
-                  <path d="M 48 47 Q 50 49 52 47" stroke="#000" strokeWidth="0.8" fill="none" />
-
-                  {/* Spiky Yellow Anime Hair */}
-                  <g id="lucas-hair">
-                    <path d="M 33 34 C 31 22, 22 30, 21 16 C 27 21, 28 12, 37 22 C 39 10, 45 18, 50 6 C 55 18, 61 10, 63 22 C 71 12, 72 21, 78 16 C 77 30, 68 22, 67 34 Z" fill="#FBBF24" stroke="#D97706" strokeWidth="0.8" />
-                    <path d="M 39 34 Q 43 40 44 40 Q 45 32 46 28 Z" fill="#FCD34D" />
-                    <path d="M 61 34 Q 57 40 56 40 Q 55 32 54 28 Z" fill="#FCD34D" />
-                  </g>
-
-                  {/* Forest Hood draped on shoulders */}
-                  <path d="M 33 48 C 33 48, 50 56, 67 48 C 67 48, 50 40, 33 48" fill="#10B981" stroke="#059669" strokeWidth="0.8" />
-
-                  {/* Detailed Ranger Bow */}
-                  <g id="lucas-bow" transform="translate(10, 5)">
-                    <path d="M 64 78 Q 78 57 64 36" stroke="#92400E" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-                    <path d="M 64 78 Q 74 57 64 36" stroke="#D97706" strokeWidth="0.8" fill="none" />
-                    <line x1="64" y1="78" x2="64" y2="36" stroke="#E2E8F0" strokeWidth="0.6" opacity="0.8" />
-                  </g>
-                </svg>
-              </div>
-              <div>
-                <span className="text-[9px] font-extrabold uppercase text-emerald-300 block">Lucas (Explorador)</span>
-                <span className="text-[8px] font-semibold text-zinc-400 block font-mono">HP: 100%</span>
+              <div className="flex flex-col mb-1 text-left select-none drop-shadow-[0_2px_4px_rgba(0,0,0,0.95)] min-w-[70px] gap-1">
+                <span className="text-[10px] font-black uppercase text-emerald-300 tracking-wider">Lucas</span>
+                {/* HP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-zinc-200 font-mono">
+                    <span>HP</span>
+                    <span>100/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-emerald-500 to-teal-500" style={{ width: '100%' }} />
+                  </div>
+                </div>
+                {/* MP */}
+                <div className="flex flex-col gap-0.5">
+                  <div className="flex justify-between items-center text-[7.5px] font-bold text-cyan-400 font-mono">
+                    <span>MP</span>
+                    <span>90/100</span>
+                  </div>
+                  <div className="h-1 w-16 bg-zinc-950/80 rounded-full overflow-hidden">
+                    <div className="h-full bg-gradient-to-r from-blue-500 to-cyan-500" style={{ width: '90%' }} />
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+
 
           {/* VS INDICATOR */}
           <div className="text-zinc-700 font-black text-xl font-mono tracking-widest select-none">VS</div>
