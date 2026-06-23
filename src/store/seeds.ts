@@ -206,7 +206,16 @@ export const STUDENTS_LIST_SEED: UserProfile[] = [
   { id: 'std-pb', first_name: 'Santi', last_name: 'Gómez', role: 'student', email: 'santi@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, // Primaria Baja (1º)
   { id: 'std-pa', first_name: 'Lucas', last_name: 'Skywalker', role: 'student', email: 'lucas@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, // Primaria Alta (4º)
   { id: 'std-sec', first_name: 'Elena', last_name: 'Rostova', role: 'student', email: 'elena@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, // Secundaria (2º)
-  { id: 'std-prep', first_name: 'Mateo', last_name: 'Díaz', role: 'student', email: 'mateo@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() } // Preparatoria (4º Sem)
+  { id: 'std-prep', first_name: 'Mateo', last_name: 'Díaz', role: 'student', email: 'mateo@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }, // Preparatoria (4º Sem)
+  { id: 'std-sem-p1', first_name: 'Sofía', last_name: 'Castro', role: 'student', email: 'sofia.castro@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-p2', first_name: 'Miguel', last_name: 'Ortiz', role: 'student', email: 'miguel.ortiz@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-p3', first_name: 'Valentina', last_name: 'Hernández', role: 'student', email: 'valentina.hernandez@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-s1', first_name: 'Alejandro', last_name: 'Flores', role: 'student', email: 'alejandro.flores@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-s2', first_name: 'Camila', last_name: 'Jiménez', role: 'student', email: 'camila.jimenez@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-s3', first_name: 'Diego', last_name: 'Vargas', role: 'student', email: 'diego.vargas@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-h1', first_name: 'Isabella', last_name: 'Montes', role: 'student', email: 'isabella.montes@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-h2', first_name: 'Leonardo', last_name: 'Soto', role: 'student', email: 'leonardo.soto@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() },
+  { id: 'std-sem-h3', first_name: 'Natalia', last_name: 'Cruz', role: 'student', email: 'natalia.cruz@iskool.edu.mx', created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
 ];
 
 export const GROUPS_SEED: Group[] = [
@@ -634,6 +643,39 @@ export const STATS_MAP_SEED: Record<string, StudentStats> = {
   'std-prep': {
     student_id: 'std-prep', xp: 500, level: 5, coins: 200, current_streak: 4, max_streak: 8, updated_at: new Date().toISOString(),
     funding_credits: 1250
+  },
+  'std-sem-p1': {
+    student_id: 'std-sem-p1', xp: 120, level: 1, coins: 35, current_streak: 3, max_streak: 4, updated_at: new Date().toISOString()
+  },
+  'std-sem-p2': {
+    student_id: 'std-sem-p2', xp: 50, level: 1, coins: 10, current_streak: 1, max_streak: 2, updated_at: new Date().toISOString()
+  },
+  'std-sem-p3': {
+    student_id: 'std-sem-p3', xp: 210, level: 2, coins: 50, current_streak: 4, max_streak: 6, updated_at: new Date().toISOString()
+  },
+  'std-sem-s1': {
+    student_id: 'std-sem-s1', xp: 290, level: 3, coins: 80, current_streak: 5, max_streak: 7, updated_at: new Date().toISOString(),
+    rpg_class: 'guerrero', attribute_strength: 15, attribute_intelligence: 10, attribute_defense: 15, skill_points: 1
+  },
+  'std-sem-s2': {
+    student_id: 'std-sem-s2', xp: 380, level: 4, coins: 130, current_streak: 7, max_streak: 12, updated_at: new Date().toISOString(),
+    rpg_class: 'curandero', attribute_strength: 8, attribute_intelligence: 16, attribute_defense: 14, skill_points: 0
+  },
+  'std-sem-s3': {
+    student_id: 'std-sem-s3', xp: 420, level: 4, coins: 160, current_streak: 8, max_streak: 10, updated_at: new Date().toISOString(),
+    rpg_class: 'explorador', attribute_strength: 12, attribute_intelligence: 12, attribute_defense: 10, skill_points: 3
+  },
+  'std-sem-h1': {
+    student_id: 'std-sem-h1', xp: 450, level: 5, coins: 190, current_streak: 3, max_streak: 8, updated_at: new Date().toISOString(),
+    funding_credits: 1100
+  },
+  'std-sem-h2': {
+    student_id: 'std-sem-h2', xp: 520, level: 6, coins: 220, current_streak: 5, max_streak: 9, updated_at: new Date().toISOString(),
+    funding_credits: 1350
+  },
+  'std-sem-h3': {
+    student_id: 'std-sem-h3', xp: 600, level: 7, coins: 300, current_streak: 9, max_streak: 15, updated_at: new Date().toISOString(),
+    funding_credits: 1600
   }
 };
 
@@ -651,6 +693,35 @@ export const AVATAR_MAP_SEED: Record<string, StudentAvatar> = {
   },
   'std-prep': {
     student_id: 'std-prep', avatar_name: 'MateoCode', hair_style: 'spiky', hair_color: '#1F2937', eyes_style: 'happy', outfit_style: 'space_suit', outfit_color: '#6B7280', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'space_suit', 'nebula', 'spiky'], updated_at: new Date().toISOString()
+  },
+  'std-sem-p1': {
+    student_id: 'std-sem-p1', avatar_name: 'Sofi', hair_style: 'classic', hair_color: '#EC4899', eyes_style: 'happy', outfit_style: 'explorer', outfit_color: '#EC4899', background_style: 'forest', unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
+    pet_type: 'gatito', pet_name: 'Mishi', pet_hunger: 30, pet_happiness: 80, pet_outfit: 'none', updated_at: new Date().toISOString()
+  },
+  'std-sem-p2': {
+    student_id: 'std-sem-p2', avatar_name: 'Migue', hair_style: 'spiky', hair_color: '#1E3A8A', eyes_style: 'happy', outfit_style: 'explorer', outfit_color: '#1E3A8A', background_style: 'forest', unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
+    pet_type: 'lobo', pet_name: 'Lobo', pet_hunger: 60, pet_happiness: 60, pet_outfit: 'none', updated_at: new Date().toISOString()
+  },
+  'std-sem-p3': {
+    student_id: 'std-sem-p3', avatar_name: 'Vale', hair_style: 'classic', hair_color: '#D97706', eyes_style: 'sparkle', outfit_style: 'explorer', outfit_color: '#D97706', background_style: 'forest', unlocked_items: ['classic', 'happy', 'space_suit', 'nebula', 'sparkle', 'explorer', 'forest'], updated_at: new Date().toISOString()
+  },
+  'std-sem-s1': {
+    student_id: 'std-sem-s1', avatar_name: 'Alex', hair_style: 'spiky', hair_color: '#4B5563', eyes_style: 'happy', outfit_style: 'purple', outfit_color: '#4B5563', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'purple', 'nebula', 'spiky'], updated_at: new Date().toISOString()
+  },
+  'std-sem-s2': {
+    student_id: 'std-sem-s2', avatar_name: 'Cami', hair_style: 'classic', hair_color: '#10B981', eyes_style: 'sparkle', outfit_style: 'purple', outfit_color: '#10B981', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'purple', 'nebula', 'sparkle'], updated_at: new Date().toISOString()
+  },
+  'std-sem-s3': {
+    student_id: 'std-sem-s3', avatar_name: 'Dieguito', hair_style: 'spiky', hair_color: '#FBBF24', eyes_style: 'happy', outfit_style: 'purple', outfit_color: '#FBBF24', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'purple', 'nebula', 'spiky'], updated_at: new Date().toISOString()
+  },
+  'std-sem-h1': {
+    student_id: 'std-sem-h1', avatar_name: 'Isa', hair_style: 'classic', hair_color: '#8B5CF6', eyes_style: 'sparkle', outfit_style: 'space_suit', outfit_color: '#8B5CF6', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'space_suit', 'nebula', 'sparkle'], updated_at: new Date().toISOString()
+  },
+  'std-sem-h2': {
+    student_id: 'std-sem-h2', avatar_name: 'Leo', hair_style: 'spiky', hair_color: '#3B82F6', eyes_style: 'happy', outfit_style: 'space_suit', outfit_color: '#3B82F6', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'space_suit', 'nebula', 'spiky'], updated_at: new Date().toISOString()
+  },
+  'std-sem-h3': {
+    student_id: 'std-sem-h3', avatar_name: 'Naty', hair_style: 'classic', hair_color: '#EF4444', eyes_style: 'sparkle', outfit_style: 'space_suit', outfit_color: '#EF4444', background_style: 'nebula', unlocked_items: ['classic', 'happy', 'space_suit', 'nebula', 'sparkle'], updated_at: new Date().toISOString()
   }
 };
 

@@ -46,13 +46,8 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
 
   switchStudent: async (studentId) => {
     set({ activeStudentId: studentId });
-    const emails: Record<string, string> = {
-      'std-pb': 'santi@iskool.edu.mx',
-      'std-pa': 'lucas@iskool.edu.mx',
-      'std-sec': 'elena@iskool.edu.mx',
-      'std-prep': 'mateo@iskool.edu.mx'
-    };
-    const email = emails[studentId];
+    const student = STUDENTS_LIST_SEED.find(s => s.id === studentId);
+    const email = student?.email;
     if (email) {
       await supabase.auth.signInWithPassword({ email, password: 'ISkoolPassword2026!' });
       // Fetch stats to sync
@@ -440,11 +435,38 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
 
 // Selectores React
 export const useCurrentStudentStats = () => {
-  return useStudentStore(state => state.allStats[state.activeStudentId] || STATS_MAP_SEED[state.activeStudentId]);
+  return useStudentStore(state => {
+    const active = state.allStats[state.activeStudentId] || STATS_MAP_SEED[state.activeStudentId];
+    if (active) return active;
+    return {
+      student_id: state.activeStudentId,
+      xp: 0,
+      level: 1,
+      coins: 0,
+      current_streak: 1,
+      max_streak: 1,
+      updated_at: new Date().toISOString()
+    };
+  });
 };
 
 export const useCurrentStudentAvatar = () => {
-  return useStudentStore(state => state.allAvatars[state.activeStudentId] || AVATAR_MAP_SEED[state.activeStudentId]);
+  return useStudentStore(state => {
+    const active = state.allAvatars[state.activeStudentId] || AVATAR_MAP_SEED[state.activeStudentId];
+    if (active) return active;
+    return {
+      student_id: state.activeStudentId,
+      avatar_name: 'Estudiante',
+      hair_style: 'classic',
+      hair_color: '#4B5563',
+      eyes_style: 'happy',
+      outfit_style: 'explorer',
+      outfit_color: '#3B82F6',
+      background_style: 'forest',
+      unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
+      updated_at: new Date().toISOString()
+    };
+  });
 };
 
 export const useCurrentStudentProfile = () => {

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { GraduationCap, Shield, Sparkles, User, Key, ArrowRight, Loader2, BookOpen } from 'lucide-react';
 import { useStudentStore } from '@/store/useStudentStore';
+import { STUDENTS_LIST_SEED } from '@/store/seeds';
 
 const DEMO_ACCOUNTS = [
   {
@@ -72,11 +73,11 @@ export default function LoginPage() {
       const result = await login(email);
       if (result.success) {
         // Sync active student ID in store if student logged in
-        const demo = DEMO_ACCOUNTS.find(a => a.email === email);
-        if (demo && demo.role === 'student') {
-          await switchStudent(demo.id);
+        const matchedStudent = STUDENTS_LIST_SEED.find(s => s.email === email);
+        if (matchedStudent) {
+          await switchStudent(matchedStudent.id);
           router.push('/student');
-        } else if (demo && demo.role === 'teacher') {
+        } else if (email === 'israel.lopez@iskool.edu.mx') {
           router.push('/teacher');
         } else {
           router.push('/');
