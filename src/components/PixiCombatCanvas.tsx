@@ -84,6 +84,8 @@ export default function PixiCombatCanvas({
 
   useEffect(() => {
     let active = true;
+    let cleanupMouse: (() => void) | null = null;
+    let cleanupCoop: (() => void) | null = null;
 
     async function initPixi() {
       if (!containerRef.current) return;
@@ -647,16 +649,24 @@ export default function PixiCombatCanvas({
         }
       });
 
-      return () => {
+      if (!active) {
         window.removeEventListener('mousemove', handleMouseMove);
         unsubscribeCoop();
+        return;
+      }
+
+      cleanupMouse = () => {
+        window.removeEventListener('mousemove', handleMouseMove);
       };
+      cleanupCoop = unsubscribeCoop;
     }
 
     initPixi();
 
     return () => {
       active = false;
+      if (cleanupMouse) cleanupMouse();
+      if (cleanupCoop) cleanupCoop();
       if (appRef.current) {
         appRef.current.destroy(true, { children: true });
         appRef.current = null;
