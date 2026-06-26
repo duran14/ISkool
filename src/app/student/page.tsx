@@ -838,10 +838,15 @@ export default function StudentDashboard() {
                     Cerrar
                   </button>
                   <button
-                    onClick={() => {
-                      submitPeerReview(selectedReviewItem.id, parseFloat(peerScore), peerComment);
-                      setSelectedReviewItem(null);
-                      setPeerComment('');
+                    onClick={async () => {
+                      try {
+                        await submitPeerReview(selectedReviewItem.id, parseFloat(peerScore), peerComment);
+                        setSelectedReviewItem(null);
+                        setPeerComment('');
+                        alert('¡Coevaluación registrada exitosamente! Ganaste +100 XP.');
+                      } catch (error: any) {
+                        alert(`Error al registrar coevaluación: ${error.message || error}`);
+                      }
                     }}
                     className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-full text-xs font-bold"
                   >
