@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { StudentStats, StudentAvatar, StudentMessage, UserProfile } from '../types';
 import { STATS_MAP_SEED, AVATAR_MAP_SEED, STUDENT_INVENTORY_SEED, STUDENT_MESSAGES_SEED, STUDENTS_LIST_SEED } from './seeds';
-import { supabase, db } from '@/lib/supabaseClient';
+import { supabase } from '@/lib/supabaseClient';
 
 interface StudentStoreState {
   activeStudentId: string;
@@ -421,7 +421,6 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   },
 
   resetStudentStore: () => {
-    db.reset();
     set({
       activeStudentId: 'std-pa',
       allStats: STATS_MAP_SEED,

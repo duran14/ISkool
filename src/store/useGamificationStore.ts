@@ -1,124 +1,83 @@
 import { create } from 'zustand';
 import { Mission, QuestAttempt, StudentBadge, GuildBoss, GuildMemberSubmission, ShopArtifact, Quest, Badge } from '../types';
-import { MISSIONS_SEED, BOSS_SEED, GUILD_SUBMISSIONS_SEED, DEFAULT_ARTIFACTS_SEED, SUBJECTS_SEED } from './seeds';
+import { MISSIONS_SEED, BOSS_SEED, GUILD_SUBMISSIONS_SEED, DEFAULT_ARTIFACTS_SEED, SUBJECTS_SEED, BADGES_SEED } from './seeds';
 import { useStudentStore } from './useStudentStore';
 import { supabase } from '@/lib/supabaseClient';
-
-const STUDENT_MAP: Record<string, string> = {
-  'std-pb': 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a33',
-  'std-pa': 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a11',
-  'std-sec': 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a22',
-  'std-prep': 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a44',
-};
-
-const BADGE_MAP: Record<string, string> = {
-  'badge-1': '83884124-d5cb-40c5-a663-fe8fb79d7246',
-  'badge-2': '8022ef59-816e-421b-bfdb-7acf1ad92f04',
-  'badge-3': '7589cae0-556c-4190-8bdc-fe545a9e4b0e',
-  'badge-4': '70aaa111-88aa-4d3f-85b8-69508ace6bdd',
-  'badge-5': '5e50c1fc-2435-4756-a83b-ffbc74f17f5f',
-  'badge-6': '44fa24b1-2a3d-4308-ab2c-d02c65b762f7',
-};
-
-const SUBJECT_MAP: Record<string, string> = {
-  'sub-math': 'b00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e11',
-  'sub-span': 'b00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e22',
-  'sub-sci': 'b00a0eeb-9c0b-4ef8-bb6d-6bb9bd380e33',
-};
-
-const MISSION_MAP: Record<string, string> = {
-  'mis-fractions': 'd00a0eeb-9c0b-4ef8-bb6d-6bb9bd380d11',
-  'mis-selva': 'd00a0eeb-9c0b-4ef8-bb6d-6bb9bd380d22',
-};
 
 const isUuid = (str?: string): boolean => {
   if (!str) return false;
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
 };
 
-const mapToUuid = (id: string, prefix = 'd00a0eeb-9c0b-4ef8-bb6d-') => {
-  if (isUuid(id)) return id;
-  let hash1 = 0;
-  let hash2 = 0;
-  for (let i = 0; i < id.length; i++) {
-    hash1 = id.charCodeAt(i) + ((hash1 << 5) - hash1);
-    hash2 = id.charCodeAt(id.length - 1 - i) + ((hash2 << 5) - hash2);
-  }
-  let hex = '';
-  for (let i = 0; i < 4; i++) {
-    hex += ('00' + ((hash1 >> (i * 8)) & 0xff).toString(16)).slice(-2);
-  }
-  for (let i = 0; i < 2; i++) {
-    hex += ('00' + ((hash2 >> (i * 8)) & 0xff).toString(16)).slice(-2);
-  }
-  return prefix + hex;
-};
-
-const mapStudentIdToUuid = (id: string): string => STUDENT_MAP[id] || id;
-const mapBadgeIdToUuid = (id: string): string => BADGE_MAP[id] || id;
-const mapSubjectIdToUuid = (id: string): string => SUBJECT_MAP[id] || id;
-const mapMissionIdToUuid = (id: string): string => {
-  if (MISSION_MAP[id]) return MISSION_MAP[id];
-  return mapToUuid(id, 'd00a0eeb-9c0b-4ef8-bb6d-');
-};
-const mapQuestIdToUuid = (id: string): string => {
-  if (id.startsWith('q-fractions-1')) return 'e00a0eeb-9c0b-4ef8-bb6d-6bb9bd380c11';
-  if (id.startsWith('q-fractions-2')) return 'e00a0eeb-9c0b-4ef8-bb6d-6bb9bd380c22';
-  if (id.startsWith('q-selva-1')) return 'e00a0eeb-9c0b-4ef8-bb6d-6bb9bd380c33';
-  if (id.startsWith('q-selva-2')) return 'e00a0eeb-9c0b-4ef8-bb6d-6bb9bd380c44';
-  return mapToUuid(id, 'e00a0eeb-9c0b-4ef8-bb6d-');
-};
-
 const ensureSubjectExists = async (subjectId: string): Promise<string> => {
-  const uuid = mapSubjectIdToUuid(subjectId);
-  if (!isUuid(uuid)) return uuid;
+  if (isUuid(subjectId)) {
+    const { data, error } = await supabase
+      .from('subjects')
+      .select('id')
+      .eq('id', subjectId)
+      .maybeSingle();
 
-  const { data, error } = await supabase
-    .from('subjects')
-    .select('id')
-    .eq('id', uuid)
-    .maybeSingle();
-
-  if (error) throw new Error(`Error checking subject: ${error.message}`);
-  if (data) return uuid;
+    if (error) throw new Error(`Error checking subject: ${error.message}`);
+    if (data) return subjectId;
+  }
 
   const name = subjectId === 'sub-math' ? 'Matemáticas' : subjectId === 'sub-sci' ? 'Ciencias Naturales' : 'Español';
-  const { error: insertError } = await supabase
+  
+  const { data: existingSubject, error: findError } = await supabase
+    .from('subjects')
+    .select('id')
+    .eq('name', name)
+    .maybeSingle();
+
+  if (findError) throw new Error(`Error finding subject: ${findError.message}`);
+  if (existingSubject) return existingSubject.id;
+
+  const { data: newSubject, error: insertError } = await supabase
     .from('subjects')
     .insert({
-      id: uuid,
       school_id: '00000000-0000-0000-0000-000000000000',
       level_grade_id: '1111c019-61c7-4097-8aca-03cc0c4db68a', // Default: Primaria 4º
       name: name,
       sep_code: subjectId.toUpperCase()
-    });
+    })
+    .select('id')
+    .single();
 
   if (insertError) throw new Error(`Error inserting subject: ${insertError.message}`);
-  return uuid;
+  return newSubject.id;
 };
 
 const ensureMissionExists = async (subjectId: string, missionId: string, missionsList: Mission[]): Promise<string> => {
-  const missionUuid = mapMissionIdToUuid(missionId);
   const subjectUuid = await ensureSubjectExists(subjectId);
 
-  const { data, error } = await supabase
+  if (isUuid(missionId)) {
+    const { data, error } = await supabase
+      .from('missions')
+      .select('id')
+      .eq('id', missionId)
+      .maybeSingle();
+
+    if (error) throw new Error(`Error checking mission: ${error.message}`);
+    if (data) return missionId;
+  }
+
+  const { data: existingMission, error: missionError } = await supabase
     .from('missions')
     .select('id')
-    .eq('id', missionUuid)
+    .eq('subject_id', subjectUuid)
     .maybeSingle();
 
-  if (error) throw new Error(`Error checking mission: ${error.message}`);
-  if (data) return missionUuid;
+  if (missionError) throw new Error(`Error checking mission by subject: ${missionError.message}`);
+  if (existingMission) return existingMission.id;
 
-  const localMission = missionsList.find(m => m.id === missionId || mapMissionIdToUuid(m.id) === missionUuid);
+  const localMission = missionsList.find(m => m.id === missionId);
   const title = localMission?.title || `Camino de Aprendizaje`;
   const description = localMission?.description || `Misiones y retos de la asignatura`;
   const storyIntro = localMission?.story_intro || `¡Bienvenido al mapa de aprendizaje!`;
 
-  const { error: insertError } = await supabase
+  const { data: newMission, error: insertError } = await supabase
     .from('missions')
     .insert({
-      id: missionUuid,
       school_id: '00000000-0000-0000-0000-000000000000',
       subject_id: subjectUuid,
       level_grade_id: '1111c019-61c7-4097-8aca-03cc0c4db68a', // Default to 4º Primaria
@@ -128,10 +87,12 @@ const ensureMissionExists = async (subjectId: string, missionId: string, mission
       map_position_x: localMission?.map_position_x || 50,
       map_position_y: localMission?.map_position_y || 50,
       is_active: true
-    });
+    })
+    .select('id')
+    .single();
 
   if (insertError) throw new Error(`Error inserting mission: ${insertError.message}`);
-  return missionUuid;
+  return newMission.id;
 };
 
 interface GamificationStoreState {
@@ -294,24 +255,11 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
     try {
       // 1. Ensure subject and mission exist in Supabase
       const missionUuid = await ensureMissionExists(subjectId, questData.mission_id, get().missionsList);
-      const questUuid = mapQuestIdToUuid(questData.id || `q-${Date.now()}`);
+      let questUuid = questData.id;
+      const isNew = !questUuid || !isUuid(questUuid);
 
-      // 2. Check if the quest already exists
-      let exists = false;
-      const { data: checkData, error: checkError } = await supabase
-        .from('quests')
-        .select('id')
-        .eq('id', questUuid)
-        .maybeSingle();
-
-      if (checkError) throw new Error(checkError.message);
-      if (checkData) {
-        exists = true;
-      }
-
-      // 3. Map database columns
-      const dbQuest = {
-        id: questUuid,
+      // 2. Map database columns
+      const dbQuest: any = {
         mission_id: missionUuid,
         title: questData.title,
         description: questData.description,
@@ -322,22 +270,26 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         content: questData.content
       };
 
-      if (exists) {
+      if (!isNew) {
+        dbQuest.id = questUuid;
         const { error } = await supabase
           .from('quests')
           .update(dbQuest)
           .eq('id', questUuid);
         if (error) throw new Error(error.message);
       } else {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from('quests')
-          .insert(dbQuest);
+          .insert(dbQuest)
+          .select('id')
+          .single();
         if (error) throw new Error(error.message);
+        questUuid = data.id;
       }
 
       // 4. Update Zustand state ONLY if Supabase mutation was successful
       set((state) => {
-        const existingMissionIndex = state.missionsList.findIndex(m => m.subject_id === subjectId);
+        const existingMissionIndex = state.missionsList.findIndex(m => m.subject_id === subjectId || m.id === missionUuid);
         
         const newQuest: Quest = {
           ...questData,
@@ -390,7 +342,7 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
       const errorMsg = err instanceof Error ? err.message : 'Error al guardar el reto';
       console.error('Error saving quest:', err);
       set({ syncError: errorMsg });
-      alert(`Error al sincronizar con Supabase: ${errorMsg}`);
+      throw err;
     }
   },
 
@@ -560,8 +512,27 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
   unlockBadge: async (studentId, badgeId) => {
     set({ syncError: null });
     try {
-      const dbStudentId = mapStudentIdToUuid(studentId);
-      const dbBadgeId = mapBadgeIdToUuid(badgeId);
+      const dbStudentId = studentId;
+      let dbBadgeId = badgeId;
+
+      if (!isUuid(badgeId)) {
+        const seedBadge = BADGES_SEED.find(b => b.id === badgeId);
+        if (seedBadge) {
+          const { data, error } = await supabase
+            .from('badges')
+            .select('id')
+            .eq('name', seedBadge.name)
+            .maybeSingle();
+          if (error) throw new Error(error.message);
+          if (data) {
+            dbBadgeId = data.id;
+          }
+        }
+      }
+
+      if (!isUuid(dbBadgeId)) {
+        throw new Error(`Invalid badge ID format: ${badgeId}`);
+      }
 
       const { data, error } = await supabase
         .from('student_badges')

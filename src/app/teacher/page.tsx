@@ -5,7 +5,7 @@ import { useStudentStore } from '@/store/useStudentStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
-import { TEACHER_SEED, SUBJECTS_SEED } from '@/store/seeds';
+import { SUBJECTS_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { 
   FileImage, Mic, MicOff, HelpCircle, CheckCircle2, 
@@ -19,7 +19,7 @@ import {
   Bookmark, Save, Sparkles
 } from 'lucide-react';
 import { FormattedDate } from '@/components/FormattedDate';
-import { DetailedStudent, AttendanceStatus, Attendance, ParentMessage, Quest, QuizQuestion } from '@/types';
+import { DetailedStudent, AttendanceStatus, Attendance, ParentMessage, Quest, QuizQuestion, UserProfile } from '@/types';
 import { PlanningTab } from './PlanningTab';
 import { EmergencyModal } from './EmergencyModal';
 
@@ -83,7 +83,7 @@ export default function TeacherDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
 
-  const currentTeacher = TEACHER_SEED;
+  const currentTeacher = user as UserProfile;
   const subjects = SUBJECTS_SEED;
 
   const portfolioItems = usePortfolioStore(state => state.portfolioItems);
@@ -217,6 +217,7 @@ export default function TeacherDashboard() {
 
   // Inicializar grupos y materias por defecto para Israel López
   useEffect(() => {
+    if (!currentTeacher) return;
     const mySchedules = schedulesList.filter(s => s.teacherId === currentTeacher.id);
     if (mySchedules.length > 0) {
       const firstGroup = mySchedules[0].groupId;
@@ -227,7 +228,7 @@ export default function TeacherDashboard() {
       setSelectedTaskSubject(firstSubject);
       setSelectedDesignSubject(firstSubject);
     }
-  }, [schedulesList, currentTeacher.id]);
+  }, [schedulesList, currentTeacher?.id]);
 
   // Cargar asistencia guardada al cambiar grupo, materia o fecha
   useEffect(() => {
@@ -2179,7 +2180,7 @@ export default function TeacherDashboard() {
                       Cancelar
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         // Validación básica
                         if (!designQuestTitle.trim()) {
                           alert('Por favor introduce un título para la tarea.');
@@ -2204,23 +2205,27 @@ export default function TeacherDashboard() {
                         const mId = missionForSubject?.id || `mis-${selectedDesignSubject}-${Date.now()}`;
 
                         // Invocar saveQuest
-                        saveQuest(selectedDesignSubject, {
-                          id: `q-${Date.now()}`,
-                          mission_id: mId,
-                          title: designQuestTitle,
-                          description: designQuestDesc,
-                          type: designQuestType,
-                          sequence_order: 1, // Se ajusta en el context
-                          xp_reward: designQuestXp,
-                          coins_reward: designQuestCoins,
-                          content: content as any,
-                          campos_formativos: designSelectedCampos,
-                          ejes_articuladores: designSelectedEjes,
-                          pdas: designSelectedPDA ? [designSelectedPDA] : []
-                        });
+                        try {
+                          await saveQuest(selectedDesignSubject, {
+                            id: `q-${Date.now()}`,
+                            mission_id: mId,
+                            title: designQuestTitle,
+                            description: designQuestDesc,
+                            type: designQuestType,
+                            sequence_order: 1, // Se ajusta en el context
+                            xp_reward: designQuestXp,
+                            coins_reward: designQuestCoins,
+                            content: content as any,
+                            campos_formativos: designSelectedCampos,
+                            ejes_articuladores: designSelectedEjes,
+                            pdas: designSelectedPDA ? [designSelectedPDA] : []
+                          });
 
-                        alert('¡Tarea escolar creada exitosamente y alineada con las normas de la NEM!');
-                        setIsCreateFormOpen(false);
+                          alert('¡Tarea escolar creada exitosamente y alineada con las normas de la NEM!');
+                          setIsCreateFormOpen(false);
+                        } catch (err: any) {
+                          alert(`Error al guardar la tarea: ${err.message || err}`);
+                        }
                       }}
                       className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-black shadow-md shadow-blue-500/10 flex items-center gap-1.5 transition-all"
                     >
@@ -2596,7 +2601,7 @@ export default function TeacherDashboard() {
                       Cancelar
                     </button>
                     <button
-                      onClick={() => {
+                      onClick={async () => {
                         // Validación básica
                         if (!designExamTitle.trim()) {
                           alert('Por favor introduce un título para el examen.');
@@ -2644,23 +2649,27 @@ export default function TeacherDashboard() {
                         const mId = missionForSubject?.id || `mis-${selectedDesignSubject}-${Date.now()}`;
 
                         // Invocar saveQuest
-                        saveQuest(selectedDesignSubject, {
-                          id: `q-${Date.now()}`,
-                          mission_id: mId,
-                          title: designExamTitle,
-                          description: `¡Combate de Jefe contra ${designExamBossName}!`,
-                          type: 'exam',
-                          sequence_order: 1, // Se ajusta en el context
-                          xp_reward: designExamXp,
-                          coins_reward: designExamCoins,
-                          content: content as any,
-                          campos_formativos: designExamSelectedCampos,
-                          ejes_articuladores: designExamSelectedEjes,
-                          pdas: designExamSelectedPDA ? [designExamSelectedPDA] : []
-                        });
+                        try {
+                          await saveQuest(selectedDesignSubject, {
+                            id: `q-${Date.now()}`,
+                            mission_id: mId,
+                            title: designExamTitle,
+                            description: `¡Combate de Jefe contra ${designExamBossName}!`,
+                            type: 'exam',
+                            sequence_order: 1, // Se ajusta en el context
+                            xp_reward: designExamXp,
+                            coins_reward: designExamCoins,
+                            content: content as any,
+                            campos_formativos: designExamSelectedCampos,
+                            ejes_articuladores: designExamSelectedEjes,
+                            pdas: designExamSelectedPDA ? [designExamSelectedPDA] : []
+                          });
 
-                        alert('¡Examen con batalla de jefe creado y guardado exitosamente!');
-                        setIsCreateExamFormOpen(false);
+                          alert('¡Examen con batalla de jefe creado y guardado exitosamente!');
+                          setIsCreateExamFormOpen(false);
+                        } catch (err: any) {
+                          alert(`Error al guardar el examen: ${err.message || err}`);
+                        }
                       }}
                       className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white text-xs font-black shadow-md shadow-purple-500/10 flex items-center gap-1.5 transition-all"
                     >

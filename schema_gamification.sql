@@ -377,5 +377,6 @@ begin
   values (party_id_param, v_student_id)
   on conflict (party_id, student_id) do nothing;
 end;
-$$ language plpgsql security definer;
+$$ language plpgsql security definer SET search_path = public, pg_catalog, pg_temp;
+
 

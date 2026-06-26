@@ -146,6 +146,14 @@ create table public.parent_student (
   primary key (parent_id, student_id)
 );
 
+alter table public.parent_student enable row level security;
+
+create policy "Permitir lectura de relacion a padres o alumnos vinculados"
+  on public.parent_student for select
+  to authenticated
+  using (auth.uid() = parent_id or auth.uid() = student_id);
+
+
 /**
  * @table enrollments
  * @description Historial de inscripciones de estudiantes en grupos para ciclos específicos.

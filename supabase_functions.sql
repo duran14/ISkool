@@ -49,6 +49,37 @@ create table if not exists public.student_messages (
   reason text
 );
 
+alter table public.shop_artifacts enable row level security;
+alter table public.student_inventory enable row level security;
+alter table public.student_messages enable row level security;
+
+create policy "Permitir lectura de shop_artifacts a usuarios autenticados"
+  on public.shop_artifacts for select
+  to authenticated
+  using (true);
+
+create policy "Permitir lectura de student_inventory a alumnos dueños"
+  on public.student_inventory for select
+  to authenticated
+  using (auth.uid() = student_id);
+
+create policy "Permitir insercion de student_inventory a alumnos dueños"
+  on public.student_inventory for insert
+  to authenticated
+  with check (auth.uid() = student_id);
+
+create policy "Permitir lectura de student_messages a alumnos dueños"
+  on public.student_messages for select
+  to authenticated
+  using (auth.uid() = student_id);
+
+create policy "Permitir actualizacion de student_messages a alumnos dueños"
+  on public.student_messages for update
+  to authenticated
+  using (auth.uid() = student_id)
+  with check (auth.uid() = student_id);
+
+
 -- Seed initial shop artifacts if table is empty
 insert into public.shop_artifacts (id, name, description, price, icon)
 values 
@@ -84,6 +115,7 @@ create or replace function public.submit_quiz(
 returns jsonb
 language plpgsql
 security definer
+SET search_path = public, pg_catalog, pg_temp
 as $$
 declare
   v_xp_reward integer;
@@ -267,6 +299,7 @@ create or replace function public.level_up_attribute(
 returns jsonb
 language plpgsql
 security definer
+SET search_path = public, pg_catalog, pg_temp
 as $$
 declare
   v_skill_points integer;
@@ -346,6 +379,7 @@ create or replace function public.purchase_artifact(
 returns jsonb
 language plpgsql
 security definer
+SET search_path = public, pg_catalog, pg_temp
 as $$
 declare
   v_coins integer;

@@ -34,8 +34,45 @@ export default function StudentDashboard() {
   const fetchPortfolioItems = usePortfolioStore(state => state.fetchPortfolioItems);
   const fetchMissions = useGamificationStore(state => state.fetchMissions);
   
-  const stats = useCurrentStudentStats();
-  const avatar = useCurrentStudentAvatar();
+  const rawStats = useCurrentStudentStats();
+  const rawAvatar = useCurrentStudentAvatar();
+
+  const defaultStats = {
+    student_id: activeStudentId || '',
+    xp: 0,
+    level: 1,
+    coins: 0,
+    current_streak: 1,
+    max_streak: 1,
+    rpg_class: 'mago' as const,
+    attribute_strength: 10,
+    attribute_intelligence: 10,
+    attribute_defense: 10,
+    skill_points: 0,
+    funding_credits: 1000,
+    updated_at: new Date().toISOString()
+  };
+
+  const defaultAvatar = {
+    student_id: activeStudentId || '',
+    avatar_name: 'Estudiante',
+    hair_style: 'classic',
+    hair_color: '#4B5563',
+    eyes_style: 'happy',
+    outfit_style: 'explorer',
+    outfit_color: '#3B82F6',
+    background_style: 'forest',
+    unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
+    pet_type: 'dragon' as const,
+    pet_name: 'Mascota',
+    pet_hunger: 50,
+    pet_happiness: 50,
+    pet_outfit: 'none',
+    updated_at: new Date().toISOString()
+  };
+
+  const stats = rawStats ? { ...defaultStats, ...rawStats } : defaultStats;
+  const avatar = rawAvatar ? { ...defaultAvatar, ...rawAvatar } : defaultAvatar;
 
   React.useEffect(() => {
     if (!loading && !user) {
@@ -45,7 +82,18 @@ export default function StudentDashboard() {
 
   React.useEffect(() => {
     if (user && user.role === 'student') {
-      fetchStats();
+      // Sincronizar activeStudentId con el id real del usuario en Zustand
+      const currentActiveId = useStudentStore.getState().activeStudentId;
+      if (currentActiveId !== user.id) {
+        useStudentStore.setState({ activeStudentId: user.id });
+      }
+
+      // Validar si existen estadísticas en Zustand para este usuario y disparar fetch si no
+      const localStats = useStudentStore.getState().allStats[user.id];
+      if (!localStats) {
+        fetchStats();
+      }
+
       fetchPortfolioItems();
       fetchMissions();
     }
@@ -106,24 +154,24 @@ export default function StudentDashboard() {
 
 
   // Calcular el progreso del nivel
-  const xpForCurrentLevel = stats.level * 200;
-  const progressPercent = Math.min(100, Math.round((stats.xp / xpForCurrentLevel) * 100));
+  const xpForCurrentLevel = (stats?.level ?? 1) * 200;
+  const progressPercent = Math.min(100, Math.round(((stats?.xp ?? 0) / xpForCurrentLevel) * 100));
 
   // Renderizador estático del Avatar en SVG
   const renderAvatarPreview = (width = 120, height = 120) => {
-    const bgGradient = avatar.background_style === 'nebula' 
+    const bgGradient = (avatar?.background_style ?? 'forest') === 'nebula' 
       ? 'from-indigo-950 via-slate-900 to-purple-950'
       : 'from-emerald-950 via-teal-900 to-cyan-950';
 
     return (
       <div className={`relative flex items-center justify-center rounded-2xl bg-gradient-to-br ${bgGradient} overflow-hidden shadow-md`} style={{ width, height }}>
         <svg viewBox="0 0 100 100" className="w-4/5 h-4/5 z-10 filter drop-shadow-md">
-          <path d="M25 80 C 25 55, 75 55, 75 80 Z" fill={avatar.outfit_color} />
+          <path d="M25 80 C 25 55, 75 55, 75 80 Z" fill={avatar?.outfit_color ?? '#3B82F6'} />
           <circle cx="50" cy="45" r="18" fill="#FDBA74" />
           <path d="M41 43 Q 44 39 47 43" stroke="#1F2937" strokeWidth="2" fill="none" strokeLinecap="round" />
           <path d="M53 43 Q 56 39 59 43" stroke="#1F2937" strokeWidth="2" fill="none" strokeLinecap="round" />
           <path d="M44 51 Q 50 56 56 51" stroke="#1F2937" strokeWidth="2" fill="none" strokeLinecap="round" />
-          <path d="M30 38 C 30 20, 70 20, 70 38" fill={avatar.hair_color} />
+          <path d="M30 38 C 30 20, 70 20, 70 38" fill={avatar?.hair_color ?? '#4B5563'} />
         </svg>
       </div>
     );
@@ -259,9 +307,9 @@ export default function StudentDashboard() {
   // --- RENDER 1: PRIMARIA BAJA (MASCOTAS VIRTUALES) ---
   const renderPrimariaBaja = () => {
     // Ropa de mascota seleccionada
-    const petOutfit = avatar.pet_outfit || 'none';
-    const petHunger = avatar.pet_hunger ?? 50;
-    const petHappiness = avatar.pet_happiness ?? 50;
+    const petOutfit = avatar?.pet_outfit || 'none';
+    const petHunger = avatar?.pet_hunger ?? 50;
+    const petHappiness = avatar?.pet_happiness ?? 50;
 
     return (
       <div className="flex flex-col gap-8">
@@ -273,14 +321,14 @@ export default function StudentDashboard() {
             {/* Visualización de la Mascota */}
             <div className="flex flex-col items-center gap-3 bg-white/10 p-5 rounded-2xl border border-white/20 backdrop-blur-sm shadow-inner w-52">
               <span className="text-[10px] font-extrabold bg-yellow-400 text-teal-950 px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Mascota: {avatar.pet_name}
+                Mascota: {avatar?.pet_name ?? 'Mascota'}
               </span>
               
               {/* Pet SVG */}
               <div className="h-28 w-28 flex items-center justify-center relative bg-emerald-950/20 rounded-full border border-white/10 p-2">
                 <svg viewBox="0 0 100 100" className="w-full h-full filter drop-shadow-md">
-                  {renderPetSVG(avatar.pet_type || 'dragon')}
-                  {renderPetAccessories(avatar.pet_type || 'dragon', petOutfit)}
+                  {renderPetSVG(avatar?.pet_type || 'dragon')}
+                  {renderPetAccessories(avatar?.pet_type || 'dragon', petOutfit)}
                 </svg>
               </div>
 
@@ -321,8 +369,8 @@ export default function StudentDashboard() {
 
             {/* Acciones de Mascota e Info */}
             <div className="flex-1">
-              <h1 className="text-3xl font-extrabold tracking-tight">¡Hola, {avatar.avatar_name}!</h1>
-              <p className="text-emerald-100 text-xs mt-1">Cuida de {avatar.pet_name} resolviendo tus retos escolares.</p>
+              <h1 className="text-3xl font-extrabold tracking-tight">¡Hola, {avatar?.avatar_name ?? 'Estudiante'}!</h1>
+              <p className="text-emerald-100 text-xs mt-1">Cuida de {avatar?.pet_name ?? 'Mascota'} resolviendo tus retos escolares.</p>
               
               {/* Barras de Estado */}
               <div className="grid grid-cols-2 gap-4 mt-4 max-w-sm">
@@ -417,14 +465,14 @@ export default function StudentDashboard() {
                 <Sparkles className="h-3.5 w-3.5 text-yellow-300" />
                 Explorador Académico
               </span>
-              <h1 className="text-3xl font-extrabold tracking-tight mt-2">¡Hola, {avatar.avatar_name}!</h1>
-              <p className="text-blue-100 mt-1 text-xs">Tu racha de {stats.current_streak} días está activa. ¡Viaja por la galaxia escolar!</p>
+              <h1 className="text-3xl font-extrabold tracking-tight mt-2">¡Hola, {avatar?.avatar_name ?? 'Estudiante'}!</h1>
+              <p className="text-blue-100 mt-1 text-xs">Tu racha de {stats?.current_streak ?? 1} días está activa. ¡Viaja por la galaxia escolar!</p>
 
               {/* XP */}
               <div className="mt-4 max-w-md">
                 <div className="flex justify-between items-center text-xs font-bold mb-1">
-                  <span>Nivel {stats.level}</span>
-                  <span>{stats.xp} / {xpForCurrentLevel} XP</span>
+                  <span>Nivel {stats?.level ?? 1}</span>
+                  <span>{stats?.xp ?? 0} / {xpForCurrentLevel} XP</span>
                 </div>
                 <div className="h-3 w-full bg-white/25 rounded-full overflow-hidden">
                   <div className="h-full bg-emerald-400 rounded-full" style={{ width: `${progressPercent}%` }} />
@@ -461,11 +509,11 @@ export default function StudentDashboard() {
 
   // --- RENDER 3: SECUNDARIA (RPG HEROES OF ISKOOL) ---
   const renderSecundariaRPG = () => {
-    const rpgClass = stats.rpg_class || 'mago';
-    const strength = stats.attribute_strength || 10;
-    const intelligence = stats.attribute_intelligence || 10;
-    const defense = stats.attribute_defense || 10;
-    const skillPoints = stats.skill_points || 0;
+    const rpgClass = stats?.rpg_class || 'mago';
+    const strength = stats?.attribute_strength ?? 10;
+    const intelligence = stats?.attribute_intelligence ?? 10;
+    const defense = stats?.attribute_defense ?? 10;
+    const skillPoints = stats?.skill_points ?? 0;
 
     return (
       <div className="flex flex-col gap-8">
@@ -561,14 +609,14 @@ export default function StudentDashboard() {
                 <span className="bg-purple-600 text-white text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                   Gremio de Héroes
                 </span>
-                <h1 className="text-3xl font-extrabold tracking-tight mt-2">{avatar.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Elena la Sabia')}</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight mt-2">{avatar?.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Elena la Sabia')}</h1>
                 <p className="text-zinc-300 text-xs mt-1">Completa contratos académicos para subir tus estadísticas de rol.</p>
 
                 {/* XP RPG */}
                 <div className="mt-4 w-64 sm:w-80">
                   <div className="flex justify-between items-center text-xs font-bold mb-1">
-                    <span>Nivel {stats.level} ({rpgClass})</span>
-                    <span>{stats.xp} / {xpForCurrentLevel} XP</span>
+                    <span>Nivel {stats?.level ?? 1} ({rpgClass})</span>
+                    <span>{stats?.xp ?? 0} / {xpForCurrentLevel} XP</span>
                   </div>
                   <div className="h-3 w-full bg-white/20 rounded-full overflow-hidden">
                     <div className="h-full bg-purple-500 rounded-full" style={{ width: `${progressPercent}%` }} />
@@ -645,7 +693,7 @@ export default function StudentDashboard() {
 
   // --- RENDER 4: PREPARATORIA (STARTUPS E INNOVACIÓN) ---
   const renderPreparatoriaStartup = () => {
-    const funding = stats.funding_credits ?? 1000;
+    const funding = stats?.funding_credits ?? 1000;
     
     // Buscar entregas del portafolio que el estudiante actual puede "coevaluar" (de otros alumnos)
     // Para simplificar la demo, listamos items de portafolio que no pertenecen a este alumno y que no tienen coevaluación registrada
@@ -662,7 +710,7 @@ export default function StudentDashboard() {
               <span className="bg-blue-500/25 border border-blue-500/30 text-blue-400 text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full">
                 Incubadora de Innovación
               </span>
-              <h1 className="text-3xl font-black mt-2">{avatar.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Mateo Díaz')}</h1>
+              <h1 className="text-3xl font-black mt-2">{avatar?.avatar_name || (activeStudent ? `${activeStudent.first_name} ${activeStudent.last_name_1}` : 'Mateo Díaz')}</h1>
               <p className="text-xs text-zinc-400 mt-1">Simula proyectos profesionales, coevalúa propuestas y acumula créditos de inversión.</p>
             </div>
 
@@ -848,7 +896,7 @@ export default function StudentDashboard() {
                   key={option.type}
                   onClick={() => changeAvatar({ pet_type: option.type as any })}
                   className={`flex flex-col items-center justify-center p-2 rounded-2xl border transition-all ${
-                    (avatar.pet_type || 'dragon') === option.type
+                    (avatar?.pet_type || 'dragon') === option.type
                       ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-950/35 text-emerald-700 dark:text-emerald-400 font-bold'
                       : 'border-zinc-200 dark:border-zinc-800 hover:border-emerald-300'
                   }`}
@@ -864,7 +912,7 @@ export default function StudentDashboard() {
               <label className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block mb-1.5">Nombre de la Mascota</label>
               <input
                 type="text"
-                value={avatar.pet_name || ''}
+                value={avatar?.pet_name || ''}
                 onChange={(e) => changeAvatar({ pet_name: e.target.value })}
                 placeholder="Ej. Llamita"
                 className="w-full text-xs p-2.5 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-transparent text-zinc-900 dark:text-white font-bold focus:outline-none focus:border-emerald-500"
