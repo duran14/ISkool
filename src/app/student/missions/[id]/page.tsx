@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useCoopStore } from '@/store/useCoopStore';
 import CoopInviteWidget from '@/components/CoopInviteWidget';
@@ -28,6 +28,8 @@ export default function MissionPage({ params }: MissionPageProps) {
   const { id } = use(params);
   const { user, loading } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlPartyId = searchParams.get('party_id');
 
   const fetchStats = useStudentStore(state => state.fetchStats);
   const fetchMissions = useGamificationStore(state => state.fetchMissions);
@@ -71,15 +73,11 @@ export default function MissionPage({ params }: MissionPageProps) {
 
   // Load party from URL query parameter on mount
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const searchParams = new URLSearchParams(window.location.search);
-    const urlPartyId = searchParams.get('party_id');
-    
     if (urlPartyId && urlPartyId !== coopPartyId) {
       console.log('Detectado party_id en URL, uniendo:', urlPartyId);
       joinParty(urlPartyId);
     }
-  }, [joinParty, coopPartyId]);
+  }, [joinParty, coopPartyId, urlPartyId]);
 
   // Subscribe to coop party actions whenever partyId is set
   useEffect(() => {
