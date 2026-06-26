@@ -377,7 +377,7 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
       const { error } = await supabase
         .from('guild_bosses')
         .update({ hp_actual: newHp })
-        .eq('id', 'boss-historia');
+        .eq('id', currentBoss.id);
 
       if (error) throw error;
 
