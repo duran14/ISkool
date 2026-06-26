@@ -244,10 +244,17 @@ create policy "Permitir a estudiantes crear su propia party"
   to authenticated
   with check (auth.uid() = created_by);
 
-create policy "Permitir al creador actualizar el estado de su party"
+create policy "Permitir a creadores y miembros actualizar el estado de la party"
   on public.coop_parties for update
   to authenticated
-  using (auth.uid() = created_by);
+  using (
+    auth.uid() = created_by 
+    or exists (
+      select 1 from public.party_members 
+      where party_members.party_id = coop_parties.id 
+        and party_members.student_id = auth.uid()
+    )
+  );
 
 
 -- ==========================================

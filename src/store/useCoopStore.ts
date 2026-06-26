@@ -26,12 +26,14 @@ interface CoopStoreState {
   bossMaxHp: number;
   isSubscribed: boolean;
   alerts: string[];
+  activeChannel: any;
   
   // Actions
   createParty: (missionId: string) => Promise<string>;
   joinParty: (partyId: string) => Promise<void>;
   sendPartyAction: (damageDealt: number, actionType: string) => Promise<void>;
   subscribeToPartyActions: (partyId: string, onActionReceived?: (action: PartyAction) => void) => () => void;
+  leaveParty: () => Promise<void>;
   resetCoopStore: () => void;
 }
 
@@ -44,6 +46,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
   bossMaxHp: 100,
   isSubscribed: false,
   alerts: [],
+  activeChannel: null,
 
   createParty: async (missionId) => {
     const studentId = useStudentStore.getState().activeStudentId;
@@ -162,15 +165,29 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
 
     // Adjust boss HP based on total damage dealt
     const totalDmgDealt = fetchedActions.reduce((sum, act) => sum + act.damage_dealt, 0);
-    set((state) => ({
-      bossHp: Math.max(0, state.bossMaxHp - totalDmgDealt)
-    }));
+    const calculatedHp = Math.max(0, maxHp - totalDmgDealt);
+    set({
+      bossHp: calculatedHp,
+      bossMaxHp: maxHp
+    });
+
+    if (calculatedHp <= 0) {
+      await supabase
+        .from('coop_parties')
+        .update({ status: 'completed' })
+        .eq('id', partyId);
+    }
   },
 
   sendPartyAction: async (damageDealt, actionType) => {
-    const { partyId } = get();
+    const { partyId, bossHp } = get();
     const studentId = useStudentStore.getState().activeStudentId;
     if (!partyId || !studentId) return;
+
+    if (bossHp <= 0) {
+      console.log('El Jefe ya está derrotado. Acción de ataque rechazada.');
+      return;
+    }
 
     const { error } = await supabase
       .from('party_actions')
@@ -187,6 +204,12 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
   },
 
   subscribeToPartyActions: (partyId, onActionReceived) => {
+    // If there is an existing channel, remove it first
+    const currentChannel = get().activeChannel;
+    if (currentChannel) {
+      supabase.removeChannel(currentChannel);
+    }
+
     set({ isSubscribed: true });
 
     const channel = supabase
@@ -200,6 +223,12 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
           filter: `party_id=eq.${partyId}`
         },
         async (payload) => {
+          // If boss is already dead, ignore incoming attacks
+          if (get().bossHp <= 0) {
+            console.log('El Jefe ya está derrotado, ignorando ataque recibido.');
+            return;
+          }
+
           const newAction = payload.new as PartyAction;
           
           let studentName = 'Compañero';
@@ -224,10 +253,12 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
           const alreadyExists = get().actions.some(a => a.id === newAction.id);
           if (alreadyExists) return;
 
+          const newBossHp = Math.max(0, get().bossHp - newAction.damage_dealt);
+
           set((state) => {
             const updatedActions = [...state.actions, actionWithDetail];
             return {
-              bossHp: Math.max(0, state.bossHp - newAction.damage_dealt),
+              bossHp: newBossHp,
               lastAction: actionWithDetail,
               actions: updatedActions,
               alerts: [...state.alerts.slice(-19), `[${studentName}]: Realizó un ataque infligiendo ${newAction.damage_dealt} de daño.`]
@@ -237,17 +268,41 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
           if (onActionReceived) {
             onActionReceived(actionWithDetail);
           }
+
+          // If boss was defeated, update party status to completed
+          if (newBossHp <= 0) {
+            await supabase
+              .from('coop_parties')
+              .update({ status: 'completed' })
+              .eq('id', partyId);
+          }
         }
       )
       .subscribe();
 
+    set({ activeChannel: channel });
+
     return () => {
       supabase.removeChannel(channel);
-      set({ isSubscribed: false });
+      set({ isSubscribed: false, activeChannel: null });
     };
   },
 
-  resetCoopStore: () => {
+  leaveParty: async () => {
+    const { partyId, activeChannel } = get();
+    if (activeChannel) {
+      await supabase.removeChannel(activeChannel);
+    }
+
+    const studentId = useStudentStore.getState().activeStudentId;
+    if (partyId && studentId) {
+      await supabase
+        .from('party_members')
+        .delete()
+        .eq('party_id', partyId)
+        .eq('student_id', studentId);
+    }
+
     set({
       partyId: null,
       members: [],
@@ -256,6 +311,25 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
       bossHp: 100,
       bossMaxHp: 100,
       isSubscribed: false,
+      activeChannel: null,
+      alerts: []
+    });
+  },
+
+  resetCoopStore: () => {
+    const { activeChannel } = get();
+    if (activeChannel) {
+      supabase.removeChannel(activeChannel);
+    }
+    set({
+      partyId: null,
+      members: [],
+      actions: [],
+      lastAction: null,
+      bossHp: 100,
+      bossMaxHp: 100,
+      isSubscribed: false,
+      activeChannel: null,
       alerts: []
     });
   }

@@ -46,7 +46,7 @@ export default function MissionPage({ params }: MissionPageProps) {
   // Zustand selectors for coop play
   const joinParty = useCoopStore(state => state.joinParty);
   const subscribeToPartyActions = useCoopStore(state => state.subscribeToPartyActions);
-  const resetCoopStore = useCoopStore(state => state.resetCoopStore);
+  const leaveParty = useCoopStore(state => state.leaveParty);
   const coopPartyId = useCoopStore(state => state.partyId);
   const coopBossHp = useCoopStore(state => state.bossHp);
   const sendPartyAction = useCoopStore(state => state.sendPartyAction);
@@ -102,12 +102,12 @@ export default function MissionPage({ params }: MissionPageProps) {
     };
   }, [coopPartyId, subscribeToPartyActions]);
 
-  // Reset coop store on page unmount
+  // Leave party and reset coop store on page unmount
   useEffect(() => {
     return () => {
-      resetCoopStore();
+      leaveParty();
     };
-  }, [resetCoopStore]);
+  }, [leaveParty]);
 
   // Subscribe to store actions to add logs to the local JRPG combat log
   useEffect(() => {
