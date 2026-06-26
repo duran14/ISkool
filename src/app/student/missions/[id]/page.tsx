@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, use } from 'react';
+import React, { useState, useEffect, use, useRef } from 'react';
 import { useStudentStore, useCurrentStudentStats } from '@/store/useStudentStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
@@ -70,6 +70,16 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [examResult, setExamResult] = useState<{ xpEarned: number, coinsEarned: number, leveledUp: boolean, badgeEarned: any } | null>(null);
   const [bossBattlePhase, setBossBattlePhase] = useState<'intro' | 'fight' | 'victory' | 'defeat'>('intro');
   const [canvasCombatState, setCanvasCombatState] = useState<'idle' | 'attacking' | 'boss_hurt' | 'victory' | 'defeat'>('idle');
+  const bossHurtTimeoutRef = useRef<any>(null);
+  const idleTimeoutRef = useRef<any>(null);
+
+  // Cleanup timeouts on unmount
+  useEffect(() => {
+    return () => {
+      if (bossHurtTimeoutRef.current) clearTimeout(bossHurtTimeoutRef.current);
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+    };
+  }, []);
 
   // Load party from URL query parameter on mount
   useEffect(() => {
@@ -400,10 +410,13 @@ export default function MissionPage({ params }: MissionPageProps) {
       ]);
 
       // Control states for Canvas animation sequence
-      setTimeout(() => {
+      if (bossHurtTimeoutRef.current) clearTimeout(bossHurtTimeoutRef.current);
+      if (idleTimeoutRef.current) clearTimeout(idleTimeoutRef.current);
+
+      bossHurtTimeoutRef.current = setTimeout(() => {
         setCanvasCombatState('boss_hurt');
       }, 600);
-      setTimeout(() => {
+      idleTimeoutRef.current = setTimeout(() => {
         setCanvasCombatState('idle');
       }, 1200);
     } else {
