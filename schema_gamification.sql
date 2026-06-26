@@ -313,3 +313,62 @@ create policy "Permitir a miembros registrar sus propias acciones"
 
 -- Habilitar Supabase Realtime para la tabla party_actions
 alter publication supabase_realtime add table public.party_actions;
+
+-- ==========================================
+-- 13. RPC Function: Join Party
+-- ==========================================
+create or replace function public.join_party(party_id_param uuid)
+returns void as $$
+declare
+  v_mission_id uuid;
+  v_mission_active boolean;
+  v_party_status text;
+  v_student_id uuid;
+begin
+  -- Obtener el ID del estudiante desde la sesión activa
+  v_student_id := auth.uid();
+  if v_student_id is null then
+    raise exception 'Usuario no autenticado';
+  end if;
+
+  -- Validar si la party existe y su estado
+  select mission_id, status into v_mission_id, v_party_status
+  from public.coop_parties
+  where id = party_id_param;
+
+  if not found then
+    raise exception 'La sala a la que intentas unirte ya no existe o ha caducado';
+  end if;
+
+  if v_party_status != 'active' then
+    raise exception 'La sala a la que intentas unirte ya no existe o ha caducado';
+  end if;
+
+  -- Validar si la misión está activa
+  select is_active into v_mission_active
+  from public.missions
+  where id = v_mission_id;
+
+  if not found or not v_mission_active then
+    raise exception 'La misión asociada a esta sala no está activa';
+  end if;
+
+  -- Validar si el alumno ya pertenece a otra sesión activa
+  if exists (
+    select 1 
+    from public.party_members pm
+    join public.coop_parties cp on pm.party_id = cp.id
+    where pm.student_id = v_student_id
+      and cp.status = 'active'
+      and cp.id != party_id_param
+  ) then
+    raise exception 'Ya perteneces a otra sesión activa de party';
+  end if;
+
+  -- Registrar al alumno en la party
+  insert into public.party_members (party_id, student_id)
+  values (party_id_param, v_student_id)
+  on conflict (party_id, student_id) do nothing;
+end;
+$$ language plpgsql security definer;
+

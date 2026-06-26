@@ -74,30 +74,14 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
     const studentId = useStudentStore.getState().activeStudentId;
     if (!studentId) return;
 
-    // 0. Verify that the party exists and is active before joining
-    const { data: partyCheck, error: checkError } = await supabase
-      .from('coop_parties')
-      .select('id, status')
-      .eq('id', partyId)
-      .maybeSingle();
+    // Call database RPC to validate and join the party
+    const { error: joinError } = await supabase.rpc('join_party', {
+      party_id_param: partyId
+    });
 
-    if (checkError || !partyCheck || partyCheck.status !== 'active') {
-      console.error('Coop party not found or not active:', checkError);
-      alert('La sala a la que intentas unirte ya no existe o ha caducado');
-      return;
-    }
-
-    // 1. Join party in Supabase (insert into party_members)
-    const { error: joinError } = await supabase
-      .from('party_members')
-      .insert({
-        party_id: partyId,
-        student_id: studentId
-      });
-
-    if (joinError && joinError.code !== '23505') { // 23505: unique constraint violation
+    if (joinError) {
       console.error('Error joining party:', joinError);
-      alert('La sala a la que intentas unirte ya no existe o ha caducado');
+      alert(joinError.message || 'La sala a la que intentas unirte ya no existe o ha caducado');
       return;
     }
 

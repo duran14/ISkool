@@ -50,17 +50,6 @@ export default function AvatarCustomizerPage() {
   // Active section tab
   const [activeSection, setActiveSection] = useState<'base' | 'clase' | 'cabeza' | 'cabello'>('base');
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
   // Initialize from context on load
   useEffect(() => {
     if (avatar) {
@@ -73,6 +62,17 @@ export default function AvatarCustomizerPage() {
       if (avatar.avatar_name) setAvatarName(avatar.avatar_name);
     }
   }, [avatar]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Audio helper
   const playSound = (type: 'click' | 'save' | 'back') => {
