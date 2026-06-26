@@ -221,44 +221,6 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [mockFile, setMockFile] = useState<{ url: string, type: string } | null>(null);
   const [isSubmissionFinished, setIsSubmissionFinished] = useState(false);
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
-          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Temporizador de Cuestionario
-  useEffect(() => {
-    if (isPlayingQuiz && !isAnswerSubmitted && timer > 0 && !quizResult) {
-      const interval = setInterval(() => {
-        setTimer(prev => prev - 1);
-      }, 1000);
-      return () => clearInterval(interval);
-    } else if (timer === 0 && !isAnswerSubmitted && !quizResult) {
-      // Tiempo agotado
-      handleAnswerSubmit(-1); // Fuerza respuesta incorrecta por tiempo
-    }
-  }, [isPlayingQuiz, isAnswerSubmitted, timer, quizResult]);
-
-  if (!mission) {
-    return (
-      <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
-        <Header />
-        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <HelpCircle className="h-16 w-16 text-zinc-400 mb-4 animate-bounce" />
-          <h2 className="text-xl font-bold">Misión no encontrada</h2>
-          <Link href="/student" className="mt-4 text-blue-600 font-semibold hover:underline">
-            Regresar al mapa
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   // --- LOGICA DE CUESTIONARIO ---
 
@@ -346,7 +308,7 @@ export default function MissionPage({ params }: MissionPageProps) {
       mockFile.type,
       evidenceReflection,
       selectedQuest.id,
-      mission.subject_id
+      mission?.subject_id || ''
     );
 
     setIsSubmissionFinished(true);
@@ -494,6 +456,45 @@ export default function MissionPage({ params }: MissionPageProps) {
   const coopBossMaxHp = useCoopStore(state => state.bossMaxHp);
   const currentBossHp = coopPartyId ? coopBossHp : bossHp;
   const currentBossMaxHp = coopPartyId ? coopBossMaxHp : bossMaxHp;
+
+  // Temporizador de Cuestionario
+  useEffect(() => {
+    if (isPlayingQuiz && !isAnswerSubmitted && timer > 0 && !quizResult) {
+      const interval = setInterval(() => {
+        setTimer(prev => prev - 1);
+      }, 1000);
+      return () => clearInterval(interval);
+    } else if (timer === 0 && !isAnswerSubmitted && !quizResult) {
+      // Tiempo agotado
+      handleAnswerSubmit(-1); // Fuerza respuesta incorrecta por tiempo
+    }
+  }, [isPlayingQuiz, isAnswerSubmitted, timer, quizResult]);
+
+  if (loading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-blue-500" />
+          <p className="text-sm font-medium text-zinc-400">Verificando sesión...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!mission) {
+    return (
+      <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
+        <Header />
+        <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <HelpCircle className="h-16 w-16 text-zinc-400 mb-4 animate-bounce" />
+          <h2 className="text-xl font-bold">Misión no encontrada</h2>
+          <Link href="/student" className="mt-4 text-blue-600 font-semibold hover:underline">
+            Regresar al mapa
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
