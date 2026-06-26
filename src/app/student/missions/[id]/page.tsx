@@ -13,6 +13,12 @@ import {
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
+import { useCoopStore } from '@/store/useCoopStore';
+import CoopInviteWidget from '@/components/CoopInviteWidget';
+import PartyStatus from '@/components/PartyStatus';
+
+const PixiCombatCanvas = dynamic(() => import('@/components/PixiCombatCanvas'), { ssr: false });
 
 interface MissionPageProps {
   params: Promise<{ id: string }>;
@@ -34,22 +40,14 @@ export default function MissionPage({ params }: MissionPageProps) {
   const questAttempts = useGamificationStore(state => state.questAttempts);
   
   const submitPortfolioItem = usePortfolioStore(state => state.submitPortfolioItem);
-  
-  useEffect(() => {
-    if (!loading && !user) {
-      router.push('/login');
-    }
-  }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user && user.role === 'student') {
-      fetchStats();
-      fetchMissions();
-    }
-  }, [user, fetchStats, fetchMissions]);
-
-  // Buscar misión
-  const mission = missions.find(m => m.id === id);
+  // Zustand selectors for coop play
+  const joinParty = useCoopStore(state => state.joinParty);
+  const subscribeToPartyActions = useCoopStore(state => state.subscribeToPartyActions);
+  const resetCoopStore = useCoopStore(state => state.resetCoopStore);
+  const coopPartyId = useCoopStore(state => state.partyId);
+  const coopBossHp = useCoopStore(state => state.bossHp);
+  const sendPartyAction = useCoopStore(state => state.sendPartyAction);
   
   // Estados de control
   const [selectedQuest, setSelectedQuest] = useState<any>(null);
@@ -69,6 +67,135 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [examAnswers, setExamAnswers] = useState<Record<string, number>>({});
   const [examResult, setExamResult] = useState<{ xpEarned: number, coinsEarned: number, leveledUp: boolean, badgeEarned: any } | null>(null);
   const [bossBattlePhase, setBossBattlePhase] = useState<'intro' | 'fight' | 'victory' | 'defeat'>('intro');
+  const [canvasCombatState, setCanvasCombatState] = useState<'idle' | 'attacking' | 'boss_hurt' | 'victory' | 'defeat'>('idle');
+
+  // Load party from URL query parameter on mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const searchParams = new URLSearchParams(window.location.search);
+    const urlPartyId = searchParams.get('party_id');
+    
+    if (urlPartyId && urlPartyId !== coopPartyId) {
+      console.log('Detectado party_id en URL, uniendo:', urlPartyId);
+      joinParty(urlPartyId);
+    }
+  }, [joinParty, coopPartyId]);
+
+  // Subscribe to coop party actions whenever partyId is set
+  useEffect(() => {
+    if (!coopPartyId) return;
+
+    console.log('Iniciando suscripción a la party cooperativa:', coopPartyId);
+    const unsubscribe = subscribeToPartyActions(coopPartyId);
+
+    return () => {
+      console.log('Desmontando suscripción de party cooperativa:', coopPartyId);
+      unsubscribe();
+    };
+  }, [coopPartyId, subscribeToPartyActions]);
+
+  // Reset coop store on page unmount
+  useEffect(() => {
+    return () => {
+      resetCoopStore();
+    };
+  }, [resetCoopStore]);
+
+  // Subscribe to store actions to add logs to the local JRPG combat log
+  useEffect(() => {
+    if (!coopPartyId) return;
+    
+    const unsubscribe = useCoopStore.subscribe((state, prevState) => {
+      const lastAction = state.lastAction;
+      const prevLastAction = prevState.lastAction;
+      
+      if (lastAction && lastAction.id !== prevLastAction?.id) {
+        const localStudentId = useStudentStore.getState().activeStudentId;
+        if (lastAction.student_id !== localStudentId) {
+          const actionMsg = `¡${lastAction.student_name?.split(' ')[0]} usó habilidad cooperativa e infligió ${lastAction.damage_dealt} de daño!`;
+          setCombatLog(prev => [
+            `🔮 [Grupo] ${actionMsg}`,
+            ...prev
+          ]);
+        }
+      }
+    });
+    
+    return unsubscribe;
+  }, [coopPartyId]);
+
+  // Play audio synthesizer effect
+  const playRetroSound = (type: 'laser' | 'hit' | 'victory' | 'defeat' | 'error' | 'powerup' | 'charge') => {
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      
+      const now = ctx.currentTime;
+      if (type === 'laser') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(800, now);
+        osc.frequency.exponentialRampToValueAtTime(100, now + 0.15);
+        gain.gain.setValueAtTime(0.1, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.15);
+        osc.start(now);
+        osc.stop(now + 0.15);
+      } else if (type === 'hit') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(40, now + 0.2);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.2);
+        osc.start(now);
+        osc.stop(now + 0.2);
+      } else if (type === 'charge') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(200, now);
+        osc.frequency.linearRampToValueAtTime(600, now + 0.3);
+        gain.gain.setValueAtTime(0.05, now);
+        gain.gain.linearRampToValueAtTime(0.01, now + 0.3);
+        osc.start(now);
+        osc.stop(now + 0.3);
+      } else if (type === 'victory') {
+        const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6
+        notes.forEach((freq, idx) => {
+          const oscSeq = ctx.createOscillator();
+          const gainSeq = ctx.createGain();
+          oscSeq.connect(gainSeq);
+          gainSeq.connect(ctx.destination);
+          oscSeq.type = 'square';
+          oscSeq.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gainSeq.gain.setValueAtTime(0.05, now + idx * 0.1);
+          gainSeq.gain.linearRampToValueAtTime(0.01, now + idx * 0.1 + 0.15);
+          oscSeq.start(now + idx * 0.1);
+          oscSeq.stop(now + idx * 0.1 + 0.15);
+        });
+      }
+    } catch (e) {
+      console.warn('Web Audio API error or not allowed:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/login');
+    }
+  }, [user, loading, router]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchStats();
+      fetchMissions();
+    }
+  }, [user, fetchStats, fetchMissions]);
+
+  // Buscar misión
+  const mission = missions.find(m => m.id === id);
   
   // Cuestionario (Quiz State)
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);
@@ -238,7 +365,8 @@ export default function MissionPage({ params }: MissionPageProps) {
   };
 
   const handleExamAnswerSubmit = (optionIndex: number) => {
-    if (isExamAnswerSubmitted || bossHp <= 0 || playerHp <= 0) return;
+    const currentHp = coopPartyId ? coopBossHp : bossHp;
+    if (isExamAnswerSubmitted || currentHp <= 0 || playerHp <= 0) return;
 
     const questions = (selectedQuest.content as any).questions;
     const currentQuestion = questions[examCurrentQuestionIdx];
@@ -254,19 +382,34 @@ export default function MissionPage({ params }: MissionPageProps) {
 
     if (isCorrect) {
       setExamCorrectCount(prev => prev + 1);
+      setCanvasCombatState('attacking');
       
       // Daño base escalado según número de preguntas para derrotar al boss al final
       const baseDmg = Math.round(bossMaxHp / questions.length);
       const intelBonus = Math.round((stats.attribute_intelligence || 1) * 2.5);
       const totalDmg = baseDmg + intelBonus;
-      const newBossHp = Math.max(0, bossHp - totalDmg);
-      setBossHp(newBossHp);
+
+      if (coopPartyId) {
+        sendPartyAction(totalDmg, 'attack');
+      } else {
+        const newBossHp = Math.max(0, bossHp - totalDmg);
+        setBossHp(newBossHp);
+      }
 
       setCombatLog(prev => [
         `⚔️ ¡Golpe Crítico! Respondiste correctamente. Haces ${totalDmg} de daño a ${selectedQuest.content.bossName || 'Jefe'} (Intelecto +${intelBonus})`,
         ...prev
       ]);
+
+      // Control states for Canvas animation sequence
+      setTimeout(() => {
+        setCanvasCombatState('boss_hurt');
+      }, 600);
+      setTimeout(() => {
+        setCanvasCombatState('idle');
+      }, 1200);
     } else {
+      setCanvasCombatState('idle');
       const bossMaxDmg = selectedQuest.content.bossMaxDmg || 20;
       const baseDmgIn = Math.round(bossMaxDmg * (0.8 + Math.random() * 0.4));
       const defReduction = Math.round((stats.attribute_defense || 1) * 1.5);
@@ -283,8 +426,9 @@ export default function MissionPage({ params }: MissionPageProps) {
 
   const continueBossBattle = () => {
     const questions = (selectedQuest.content as any).questions;
+    const currentHp = coopPartyId ? coopBossHp : bossHp;
 
-    if (bossHp <= 0) {
+    if (currentHp <= 0) {
       setBossBattlePhase('victory');
       const score = Math.max(60, Math.round((examCorrectCount / questions.length) * 100));
       const results = submitExam(
@@ -307,7 +451,9 @@ export default function MissionPage({ params }: MissionPageProps) {
       // Llegó al final de las preguntas
       const passRate = examCorrectCount / questions.length;
       if (passRate >= 0.6) {
-        setBossHp(0);
+        if (!coopPartyId) {
+          setBossHp(0);
+        }
         setBossBattlePhase('victory');
         const score = Math.round((examCorrectCount / questions.length) * 100);
         const results = submitExam(
@@ -333,6 +479,10 @@ export default function MissionPage({ params }: MissionPageProps) {
     const hasPassed = attempts.some(a => a.score >= 60);
     return hasPassed ? 'completed' : 'failed';
   };
+
+  const coopBossMaxHp = useCoopStore(state => state.bossMaxHp);
+  const currentBossHp = coopPartyId ? coopBossHp : bossHp;
+  const currentBossMaxHp = coopPartyId ? coopBossMaxHp : bossMaxHp;
 
   return (
     <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
@@ -371,6 +521,10 @@ export default function MissionPage({ params }: MissionPageProps) {
                   </p>
                 </div>
               </div>
+
+              {/* Componentes Cooperativos */}
+              <CoopInviteWidget missionId={mission.id} />
+              <PartyStatus />
             </div>
 
             {/* Camino de Retos (Derecha) */}
@@ -912,15 +1066,15 @@ export default function MissionPage({ params }: MissionPageProps) {
                   <div className="p-4 rounded-2xl bg-zinc-900 border border-purple-950/60 flex flex-col gap-2">
                     <div className="flex justify-between items-center font-black">
                       <span className="text-xs font-black text-purple-400">{selectedQuest.content.bossName}</span>
-                      <span className="text-xs font-black text-purple-300">HP {bossHp}/{bossMaxHp}</span>
+                      <span className="text-xs font-black text-purple-300">HP {currentBossHp}/{currentBossMaxHp}</span>
                     </div>
                     {/* Barra de HP */}
                     <div className="h-3 w-full bg-zinc-800 rounded-full overflow-hidden">
                       <div 
                         className={`h-full transition-all duration-500 ${
-                          bossHp > 50 ? 'bg-purple-650' : bossHp > 20 ? 'bg-fuchsia-500' : 'bg-red-650 animate-pulse'
+                          currentBossHp > 50 ? 'bg-purple-650' : currentBossHp > 20 ? 'bg-fuchsia-500' : 'bg-red-650 animate-pulse'
                         }`}
-                        style={{ width: `${(bossHp / bossMaxHp) * 100}%` }}
+                        style={{ width: `${(currentBossHp / currentBossMaxHp) * 100}%` }}
                       />
                     </div>
                     <div className="text-[10px] text-zinc-400 mt-1 flex justify-between font-bold">
@@ -929,6 +1083,24 @@ export default function MissionPage({ params }: MissionPageProps) {
                     </div>
                   </div>
 
+                </div>
+
+                {/* Lienzo Gráfico de Combate RPG (PixiJS) */}
+                <div className="w-full h-[220px] md:h-[280px] rounded-2xl overflow-hidden border border-purple-955/30 bg-zinc-900/35 relative">
+                  <PixiCombatCanvas
+                    combatState={canvasCombatState}
+                    volume={1}
+                    guildBoss={{
+                      hp_actual: currentBossHp,
+                      hp_max: currentBossMaxHp,
+                      name: selectedQuest.content.bossName || 'Jefe',
+                      xp_reward: selectedQuest.xp_reward
+                    }}
+                    partyHp={playerHp}
+                    elenaSub={undefined}
+                    playSound={playRetroSound}
+                    onAttackFinish={() => setCanvasCombatState('idle')}
+                  />
                 </div>
 
                 {/* Combat Log */}

@@ -2669,34 +2669,10 @@ export default function TeacherDashboard() {
                     </button>
                   </div>
                 </div>
-              ) : (
-                <div className="lg:col-span-4 bg-zinc-50/50 dark:bg-zinc-900/20 border border-zinc-200/50 dark:border-zinc-800/40 rounded-3xl p-6 shadow-sm flex flex-col gap-4 text-left">
-                  <h4 className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest flex items-center gap-1.5 border-b border-zinc-200/40 pb-2 font-black">
-                    <Brain className="h-4.5 w-4.5 text-indigo-500 animate-pulse" />
-                    Principios de Planeación NEM
-                  </h4>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 leading-relaxed font-semibold">
-                    De acuerdo con el Plan de Estudio de la <strong>Nueva Escuela Mexicana (NEM)</strong>:
-                  </p>
-                  <ul className="text-xs text-zinc-650 dark:text-zinc-350 flex flex-col gap-2.5 list-disc pl-4 leading-relaxed font-medium">
-                    <li>
-                      <strong>Clase-materia integrada</strong>: Los contenidos académicos (PDA) deben estar vinculados estructuralmente a campos formativos.
-                    </li>
-                    <li>
-                      <strong>Ejes Articuladores transversales</strong>: Permiten conectar los saberes disciplinares con la realidad comunitaria de los alumnos.
-                    </li>
-                    <li>
-                      <strong>Eficiencia en Evaluación</strong>: Alinear la tarea de forma grupal evita tener que reclasificar el PDA para cada alumno individual al momento de calificar su portafolio.
-                    </li>
-                  </ul>
-                  <div className="mt-2 p-3.5 bg-blue-50/50 dark:bg-blue-950/10 border border-blue-100 dark:border-blue-900/35 rounded-2xl text-[11px] font-semibold text-blue-700 dark:text-blue-300 leading-relaxed">
-                    💡 <strong>Consejo del Portal</strong>: Selecciona la materia en la barra superior para ver las tareas existentes. Puedes editar o crear nuevas tareas con recompensas en XP vinculadas.
-                  </div>
-                </div>
-              )}
+              ) : null}
 
               {/* LISTADO DE TAREAS EXISTENTES (lg:col-span-8 o lg:col-span-12) */}
-              <div className={`${(isCreateFormOpen || isCreateExamFormOpen) ? 'lg:col-span-4' : 'lg:col-span-8'} flex flex-col gap-4 w-full`}>
+              <div className={`${(isCreateFormOpen || isCreateExamFormOpen) ? 'lg:col-span-4' : 'lg:col-span-12'} flex flex-col gap-4 w-full`}>
                 <div className="bg-white dark:bg-zinc-900 border border-zinc-200/60 dark:border-zinc-800/60 rounded-3xl p-6 shadow-sm flex flex-col gap-4 w-full">
                   <span className="text-xs font-black text-zinc-800 dark:text-zinc-200 uppercase tracking-widest border-b border-zinc-100 dark:border-zinc-800 pb-2 flex items-center justify-between">
                     <span>Tareas Creadas en Asignatura</span>

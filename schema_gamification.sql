@@ -219,3 +219,97 @@ insert into public.badges (name, description, icon_name, category, xp_required) 
   ('Creador de Universos', 'Sube una evidencia artística o dibujo digital de alta calidad.', 'Palette', 'creative', 150),
   ('Compañero Estelar', 'Realiza una coevaluación constructiva para un compañero.', 'Users', 'social', 100),
   ('Racha del Sol', 'Mantén una racha de actividad diaria de 5 días seguidos.', 'Flame', 'persistence', 300);
+
+-- ==========================================
+-- 10. Coop Parties (Sesiones Cooperativas)
+-- ==========================================
+create table public.coop_parties (
+  id uuid default uuid_generate_v4() primary key,
+  mission_id uuid references public.missions(id) on delete cascade not null,
+  created_by uuid references public.students(id) on delete cascade not null,
+  status text not null default 'active' check (status in ('active', 'completed', 'failed')),
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.coop_parties enable row level security;
+
+-- Políticas RLS para coop_parties
+create policy "Permitir lectura de coop_parties a usuarios autenticados"
+  on public.coop_parties for select
+  to authenticated
+  using (true);
+
+create policy "Permitir a estudiantes crear su propia party"
+  on public.coop_parties for insert
+  to authenticated
+  with check (auth.uid() = created_by);
+
+create policy "Permitir al creador actualizar el estado de su party"
+  on public.coop_parties for update
+  to authenticated
+  using (auth.uid() = created_by);
+
+
+-- ==========================================
+-- 11. Party Members (Miembros de la Party)
+-- ==========================================
+create table public.party_members (
+  party_id uuid references public.coop_parties(id) on delete cascade not null,
+  student_id uuid references public.students(id) on delete cascade not null,
+  joined_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (party_id, student_id)
+);
+
+alter table public.party_members enable row level security;
+
+-- Políticas RLS para party_members
+create policy "Permitir lectura de party_members a usuarios autenticados"
+  on public.party_members for select
+  to authenticated
+  using (true);
+
+create policy "Permitir a estudiantes unirse a una party"
+  on public.party_members for insert
+  to authenticated
+  with check (auth.uid() = student_id);
+
+create policy "Permitir a estudiantes salir de una party"
+  on public.party_members for delete
+  to authenticated
+  using (auth.uid() = student_id);
+
+
+-- ==========================================
+-- 12. Party Actions (Acciones/Ataques en Tiempo Real)
+-- ==========================================
+create table public.party_actions (
+  id uuid default uuid_generate_v4() primary key,
+  party_id uuid references public.coop_parties(id) on delete cascade not null,
+  student_id uuid references public.students(id) on delete cascade not null,
+  damage_dealt integer not null check (damage_dealt >= 0),
+  action_type text not null, -- e.g., 'attack', 'heal', 'spell'
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+alter table public.party_actions enable row level security;
+
+-- Políticas RLS para party_actions
+create policy "Permitir lectura de party_actions a usuarios autenticados"
+  on public.party_actions for select
+  to authenticated
+  using (true);
+
+create policy "Permitir a miembros registrar sus propias acciones"
+  on public.party_actions for insert
+  to authenticated
+  with check (
+    auth.uid() = student_id 
+    and exists (
+      select 1 from public.party_members 
+      where party_members.party_id = party_actions.party_id 
+        and party_members.student_id = auth.uid()
+    )
+  );
+
+-- Habilitar Supabase Realtime para la tabla party_actions
+alter publication supabase_realtime add table public.party_actions;

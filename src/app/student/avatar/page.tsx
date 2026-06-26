@@ -233,7 +233,7 @@ export default function AvatarCustomizerPage() {
           </button>
           
           <div className="flex items-center gap-3">
-            <span className="bg-purple-500/15 border border-purple-500/30 text-purple-400 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 animate-pulse">
+            <span className="bg-purple-500/15 border border-purple-500/30 text-purple-400 px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 animate-pulse cursor-default select-none">
               <Sparkles className="h-3.5 w-3.5" /> Personalizador 2D Anime
             </span>
           </div>
