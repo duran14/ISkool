@@ -508,32 +508,36 @@ export default function TeacherDashboard() {
   };
 
   // Guardar evaluación con desglose de XP y metadatos NEM
-  const handleSaveReview = (statusType: 'needs_revision' | 'approved', bonusXp = 0) => {
+  const handleSaveReview = async (statusType: 'needs_revision' | 'approved', bonusXp = 0) => {
     if (!activeItem) return;
 
-    // Calcular XP total
-    const totalXp = xpBreakdown.scientific + xpBreakdown.critical + xpBreakdown.collaborative + xpBreakdown.communication + bonusXp;
+    try {
+      // Calcular XP total
+      const totalXp = xpBreakdown.scientific + xpBreakdown.critical + xpBreakdown.collaborative + xpBreakdown.communication + bonusXp;
 
-    reviewPortfolioItem(
-      activeItem.id,
-      statusType,
-      commentText || (statusType === 'approved' ? 'Logrado. Excelente evidencia del aprendizaje.' : 'Requiere apoyo. Favor de realizar las correcciones indicadas.'),
-      totalXp,
-      selectedCampos,
-      selectedPDA ? [selectedPDA] : [],
-      selectedEjes,
-      xpBreakdown
-    );
+      await reviewPortfolioItem(
+        activeItem.id,
+        statusType,
+        commentText || (statusType === 'approved' ? 'Logrado. Excelente evidencia del aprendizaje.' : 'Requiere apoyo. Favor de realizar las correcciones indicadas.'),
+        totalXp,
+        selectedCampos,
+        selectedPDA ? [selectedPDA] : [],
+        selectedEjes,
+        xpBreakdown
+      );
 
-    // Mensaje de éxito
-    alert(`Evidencia calificada exitosamente.\nEstado: ${statusType === 'approved' ? 'Logrado/Avanzado' : 'Requiere Apoyo'}\nXP Total Otorgado: ${totalXp} XP`);
-    
-    // Seleccionar la siguiente de la lista si hay
-    const remainingPending = pendingItems.filter(item => item.id !== activeItem.id);
-    if (remainingPending.length > 0) {
-      setSelectedItemId(remainingPending[0].id);
-    } else {
-      setSelectedItemId(null);
+      // Mensaje de éxito
+      alert(`Evidencia calificada exitosamente.\nEstado: ${statusType === 'approved' ? 'Logrado/Avanzado' : 'Requiere Apoyo'}\nXP Total Otorgado: ${totalXp} XP`);
+      
+      // Seleccionar la siguiente de la lista si hay
+      const remainingPending = pendingItems.filter(item => item.id !== activeItem.id);
+      if (remainingPending.length > 0) {
+        setSelectedItemId(remainingPending[0].id);
+      } else {
+        setSelectedItemId(null);
+      }
+    } catch (error: any) {
+      alert(`Error al guardar la revisión: ${error.message || error}`);
     }
   };
 
@@ -1366,18 +1370,22 @@ export default function TeacherDashboard() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => {
-                    const studentsInGroup = detailedStudents.filter(s => s.group_id === selectedAttendanceGroup);
-                    const recordsToSave = studentsInGroup.map(s => ({
-                      student_id: s.id,
-                      group_id: selectedAttendanceGroup,
-                      subject_id: selectedAttendanceSubject,
-                      date: attendanceDate,
-                      status: attendanceRecords[s.id]?.status || 'presente',
-                      comments: attendanceRecords[s.id]?.comments || ''
-                    }));
-                    saveAttendanceList(recordsToSave);
-                    alert('¡La asistencia escolar ha sido guardada exitosamente!');
+                  onClick={async () => {
+                    try {
+                      const studentsInGroup = detailedStudents.filter(s => s.group_id === selectedAttendanceGroup);
+                      const recordsToSave = studentsInGroup.map(s => ({
+                        student_id: s.id,
+                        group_id: selectedAttendanceGroup,
+                        subject_id: selectedAttendanceSubject,
+                        date: attendanceDate,
+                        status: attendanceRecords[s.id]?.status || 'presente',
+                        comments: attendanceRecords[s.id]?.comments || ''
+                      }));
+                      await saveAttendanceList(recordsToSave);
+                      alert('¡La asistencia escolar ha sido guardada exitosamente!');
+                    } catch (error: any) {
+                      alert(`Error al guardar asistencia: ${error.message || error}`);
+                    }
                   }}
                   className="flex-1 sm:flex-initial px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-blue-500/10"
                 >
@@ -2902,23 +2910,27 @@ export default function TeacherDashboard() {
 
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       if (!mockEvidenceTitle.trim()) {
                         alert('Por favor introduce un título.');
                         return;
                       }
-                      submitPortfolioItemOnBehalf(
-                        linkingStudent.id,
-                        mockEvidenceTitle,
-                        mockEvidenceDesc,
-                        mockEvidenceFileUrl || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600',
-                        mockEvidenceFileType,
-                        'Evidencia registrada por el docente en aula.',
-                        selectedTaskQuest,
-                        selectedTaskSubject
-                      );
-                      setIsLinkModalOpen(false);
-                      alert(`¡Evidencia física creada y vinculada exitosamente para ${linkingStudent.first_name}!`);
+                      try {
+                        await submitPortfolioItemOnBehalf(
+                          linkingStudent.id,
+                          mockEvidenceTitle,
+                          mockEvidenceDesc,
+                          mockEvidenceFileUrl || 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?q=80&w=600',
+                          mockEvidenceFileType,
+                          'Evidencia registrada por el docente en aula.',
+                          selectedTaskQuest,
+                          selectedTaskSubject
+                        );
+                        setIsLinkModalOpen(false);
+                        alert(`¡Evidencia física creada y vinculada exitosamente para ${linkingStudent.first_name}!`);
+                      } catch (error: any) {
+                        alert(`Error al registrar y vincular evidencia: ${error.message || error}`);
+                      }
                     }}
                     className="py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-100 rounded-xl text-xs font-black transition-all flex items-center justify-center gap-1.5"
                   >
@@ -3018,21 +3030,25 @@ export default function TeacherDashboard() {
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  sendParentMessage({
-                    parent_id: 'usr-parent-1', // Enviar al único padre de simulación
-                    student_id: notifyingStudent.id,
-                    student_name: `${notifyingStudent.first_name} ${notifyingStudent.last_name_1}`,
-                    teacher_id: currentTeacher.id,
-                    teacher_name: `${currentTeacher.first_name} ${currentTeacher.last_name}`,
-                    subject_id: selectedTaskSubject,
-                    subject_name: subjects.find(s => s.id === selectedTaskSubject)?.name || 'Materia',
-                    quest_id: selectedTaskQuest || undefined,
-                    quest_title: notifyingQuestTitle || undefined,
-                    message: customMessage
-                  });
-                  setIsNotifyModalOpen(false);
-                  alert(`¡Aviso enviado exitosamente al tutor de ${notifyingStudent.first_name}!`);
+                onClick={async () => {
+                  try {
+                    await sendParentMessage({
+                      parent_id: 'usr-parent-1', // Enviar al único padre de simulación
+                      student_id: notifyingStudent.id,
+                      student_name: `${notifyingStudent.first_name} ${notifyingStudent.last_name_1}`,
+                      teacher_id: currentTeacher.id,
+                      teacher_name: `${currentTeacher.first_name} ${currentTeacher.last_name}`,
+                      subject_id: selectedTaskSubject,
+                      subject_name: subjects.find(s => s.id === selectedTaskSubject)?.name || 'Materia',
+                      quest_id: selectedTaskQuest || undefined,
+                      quest_title: notifyingQuestTitle || undefined,
+                      message: customMessage
+                    });
+                    setIsNotifyModalOpen(false);
+                    alert(`¡Aviso enviado exitosamente al tutor de ${notifyingStudent.first_name}!`);
+                  } catch (error: any) {
+                    alert(`Error al enviar notificación a tutor: ${error.message || error}`);
+                  }
                 }}
                 className="px-5 py-2.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md shadow-blue-500/10 transition-all"
               >
@@ -3375,10 +3391,14 @@ export default function TeacherDashboard() {
                                     </button>
                                     <button
                                       disabled={!revocationReason.trim()}
-                                      onClick={() => {
-                                        revokeArtifact(selectedStudent.id, art.id, revocationReason);
-                                        setRevokingArtifactId(null);
-                                        setRevocationReason('');
+                                      onClick={async () => {
+                                        try {
+                                          await revokeArtifact(selectedStudent.id, art.id, revocationReason);
+                                          setRevokingArtifactId(null);
+                                          setRevocationReason('');
+                                        } catch (error: any) {
+                                          alert(`Error al revocar artefacto: ${error.message || error}`);
+                                        }
                                       }}
                                       className="px-2.5 py-1 bg-rose-600 hover:bg-rose-550 text-white rounded text-[9px] font-bold disabled:opacity-40"
                                     >
@@ -3408,7 +3428,13 @@ export default function TeacherDashboard() {
                               <span className="text-[10px] text-zinc-400 block">{art.description}</span>
                             </div>
                             <button
-                              onClick={() => grantArtifact(selectedStudent.id, art.id)}
+                              onClick={async () => {
+                                try {
+                                  await grantArtifact(selectedStudent.id, art.id);
+                                } catch (error: any) {
+                                  alert(`Error al otorgar artefacto: ${error.message || error}`);
+                                }
+                              }}
                               className="px-3 py-1 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase transition-all shrink-0"
                             >
                               Otorgar
@@ -3488,17 +3514,22 @@ export default function TeacherDashboard() {
                     <div className="flex justify-end gap-3 mt-2">
                       <button
                         disabled={!newArtName || !newArtDesc}
-                        onClick={() => {
-                          createArtifact({
-                            name: newArtName,
-                            price: newArtPrice,
-                            description: newArtDesc,
-                            icon: newArtIcon,
-                            effect: 'extra_attempt'
-                          });
-                          setNewArtName('');
-                          setNewArtDesc('');
-                          setNewArtPrice(25);
+                        onClick={async () => {
+                          try {
+                            await createArtifact({
+                              name: newArtName,
+                              price: newArtPrice,
+                              description: newArtDesc,
+                              icon: newArtIcon,
+                              effect: 'extra_attempt'
+                            });
+                            setNewArtName('');
+                            setNewArtDesc('');
+                            setNewArtPrice(25);
+                            alert('¡Artefacto creado exitosamente!');
+                          } catch (error: any) {
+                            alert(`Error al crear artefacto: ${error.message || error}`);
+                          }
                         }}
                         className="px-5 py-2.5 bg-purple-600 hover:bg-purple-550 text-white rounded-full text-xs font-black uppercase transition-all shadow disabled:opacity-40"
                       >
