@@ -35,7 +35,7 @@ export default function Home() {
         </div>
 
         {/* Portales de Acceso */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 w-full max-w-6xl">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6 w-full max-w-7xl">
           
           {/* Tarjeta Estudiante */}
           <Link
@@ -133,6 +133,31 @@ export default function Home() {
 
             <div className="mt-8 flex items-center gap-1.5 text-xs font-bold text-violet-600 dark:text-violet-400">
               Entrar como Coordinador
+              <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
+            </div>
+          </Link>
+
+          {/* Tarjeta Super Usuario */}
+          <Link
+            href="/admin"
+            className="group relative flex flex-col justify-between p-6 rounded-3xl border border-zinc-200/80 bg-white hover:border-amber-500 hover:shadow-xl hover:shadow-amber-500/5 transition-all dark:border-zinc-800/80 dark:bg-zinc-900/50 dark:hover:border-amber-500"
+          >
+            <div className="flex flex-col gap-4">
+              <div className="p-3 rounded-2xl bg-amber-50 text-amber-600 dark:bg-amber-950 dark:text-amber-400 w-fit group-hover:scale-110 transition-transform">
+                <ShieldAlert className="h-6 w-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-zinc-900 dark:text-white group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+                  Portal de Super Usuario
+                </h3>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1.5 leading-normal">
+                  Gestiona las escuelas (colegios), materias y configuraciones globales en una vista interactiva de alto rendimiento.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-8 flex items-center gap-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
+              Entrar como Administrador
               <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
             </div>
           </Link>
