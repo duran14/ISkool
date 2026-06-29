@@ -157,6 +157,11 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: activeStudentId,
         attribute_name: statName
       });
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "level_up_attribute" no existe o falló en la base de datos de Supabase.', response.error);
+        alert('Error al subir de nivel el atributo: ' + response.error.message);
+        return;
+      }
       if (response && response.data && response.data.success) {
         set((state) => ({
           allStats: {
@@ -166,6 +171,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         }));
       }
     } catch (err: any) {
+      console.error('Error al subir de nivel el atributo:', err);
       alert(err.message || 'Error al subir de nivel el atributo');
     }
   },
@@ -176,6 +182,11 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: studentId,
         artifact_id: artifactId
       });
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "purchase_artifact" no está definida en Supabase.', response.error);
+        alert('Error al comprar el artefacto: ' + response.error.message);
+        return;
+      }
       if (response && response.data && response.data.success) {
         set((state) => ({
           allStats: {
@@ -191,6 +202,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         alert(`¡Compraste el artefacto con éxito!`);
       }
     } catch (err: any) {
+      console.error('Error al comprar artefacto:', err);
       alert(err.message || 'Error al comprar el artefacto');
     }
   },
@@ -201,6 +213,11 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         student_id: studentId,
         artifact_id: artifactId
       });
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "grant_artifact" no está definida en la base de datos de Supabase.', response.error);
+        alert('Error al otorgar artefacto: ' + response.error.message);
+        return;
+      }
       if (response && response.data && response.data.success) {
         set((state) => ({
           studentInventoryMap: {
@@ -212,6 +229,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         alert("Artefacto otorgado con éxito.");
       }
     } catch (err: any) {
+      console.error('Error al otorgar artefacto:', err);
       alert(err.message || 'Error al otorgar artefacto');
     }
   },
@@ -223,6 +241,11 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         artifact_id: artifactId,
         reason: reason
       });
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "revoke_artifact" no se encuentra registrada en la base de datos de Supabase.', response.error);
+        alert('Error al retirar artefacto: ' + response.error.message);
+        return;
+      }
       if (response && response.data && response.data.success) {
         set((state) => ({
           studentInventoryMap: {
@@ -234,6 +257,7 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
         alert("Artefacto retirado e informe enviado al alumno.");
       }
     } catch (err: any) {
+      console.error('Error al retirar artefacto:', err);
       alert(err.message || 'Error al retirar artefacto');
     }
   },

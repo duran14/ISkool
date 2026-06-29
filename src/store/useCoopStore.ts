@@ -63,7 +63,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
       .single();
 
     if (error) {
-      console.error('Error al crear la party cooperativa:', error);
+      console.error('SQL / SCHEMA DEVIATION DETECTED: La tabla "coop_parties" o la columna "mission_id"/"created_by"/"status" no existen en Supabase. Asegúrate de ejecutar las migraciones correspondientes.', error);
       throw error;
     }
 
@@ -83,7 +83,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
     });
 
     if (joinError) {
-      console.error('Error joining party:', joinError);
+      console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "join_party" no está definida en la base de datos de Supabase. Debe aceptar el parámetro "party_id_param" (UUID) y manejar la lógica de inserción de miembros.', joinError);
       alert(joinError.message || 'La sala a la que intentas unirte ya no existe o ha caducado');
       return;
     }
@@ -106,7 +106,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
 
     let mappedMembers: PartyMember[] = [];
     if (membersError) {
-      console.error('Error fetching party members:', membersError);
+      console.error('SQL / SCHEMA DEVIATION DETECTED: La tabla "party_members" o su relación de clave foránea con "students"/"profiles" no se encuentra configurada en Supabase.', membersError);
     } else if (membersData) {
       mappedMembers = membersData.map((m: any) => {
         const profile = m.students?.profiles;
@@ -151,7 +151,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
 
     let fetchedActions: PartyAction[] = [];
     if (actionsError) {
-      console.error('Error fetching party actions:', actionsError);
+      console.error('SQL / SCHEMA DEVIATION DETECTED: La tabla "party_actions" o las columnas "party_id"/"student_id"/"damage_dealt"/"action_type" no existen en Supabase.', actionsError);
     } else if (actionsData) {
       fetchedActions = actionsData.map((action: any) => {
         const member = mappedMembers.find(m => m.student_id === action.student_id);
@@ -199,7 +199,7 @@ export const useCoopStore = create<CoopStoreState>((set, get) => ({
       });
 
     if (error) {
-      console.error('Error sending party action:', error);
+      console.error('SQL / SCHEMA DEVIATION DETECTED: Fallo al insertar fila en "party_actions". Confirma que la tabla exista y permita inserciones públicas.', error);
     }
   },
 

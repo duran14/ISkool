@@ -164,6 +164,11 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         answers: answers
       });
 
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "submit_quiz" no existe o falló en la base de datos de Supabase.', response.error);
+        return { xpEarned: 0, coinsEarned: 0, leveledUp: false, badgeEarned: null };
+      }
+
       if (response && response.data && response.data.success) {
         // Update quest attempts
         set((state) => ({
@@ -211,6 +216,11 @@ export const useGamificationStore = create<GamificationStoreState>((set, get) =>
         stat_boost: statBoost,
         custom_loot: customLoot
       });
+
+      if (response.error) {
+        console.error('SQL / SCHEMA DEVIATION DETECTED: La función RPC "submit_exam" no está registrada en Supabase.', response.error);
+        return { xpEarned: 0, coinsEarned: 0, leveledUp: false, badgeEarned: null };
+      }
 
       if (response && response.data && response.data.success) {
         // Update quest attempts
