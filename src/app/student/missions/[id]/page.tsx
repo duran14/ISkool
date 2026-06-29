@@ -8,7 +8,8 @@ import { Header } from '@/components/Header';
 import { 
   ArrowLeft, Play, FileSpreadsheet, AudioLines, 
   CheckCircle2, XCircle, ChevronRight, Coins, 
-  Trophy, Sparkles, Upload, FileImage, Mic, HelpCircle, ArrowRight, Lock, Award, Heart, Brain
+  Trophy, Sparkles, Upload, FileImage, Mic, HelpCircle, ArrowRight, Lock, Award, Heart, Brain,
+  Bold, Italic, List, Heading, FileText, Video
 } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/context/AuthContext';
@@ -17,6 +18,7 @@ import dynamic from 'next/dynamic';
 import { useCoopStore } from '@/store/useCoopStore';
 import CoopInviteWidget from '@/components/CoopInviteWidget';
 import PartyStatus from '@/components/PartyStatus';
+import QuestList from '@/components/QuestList';
 
 const PixiCombatCanvas = dynamic(() => import('@/components/PixiCombatCanvas'), { ssr: false });
 
@@ -56,6 +58,28 @@ export default function MissionPage({ params }: MissionPageProps) {
   const [isPlayingQuiz, setIsPlayingQuiz] = useState(false);
   const [isSubmittingEvidence, setIsSubmittingEvidence] = useState(false);
   const [isPlayingExam, setIsPlayingExam] = useState(false);
+  const [showForm, setShowForm] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertFormat = (format: 'bold' | 'italic' | 'list' | 'header') => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selected = text.substring(start, end);
+    let replacement = '';
+    if (format === 'bold') replacement = `**${selected || 'texto'}**`;
+    else if (format === 'italic') replacement = `*${selected || 'texto'}*`;
+    else if (format === 'list') replacement = `\n- ${selected || 'elemento'}`;
+    else if (format === 'header') replacement = `\n### ${selected || 'título'}`;
+    
+    setEvidenceReflection(text.substring(0, start) + replacement + text.substring(end));
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(start + replacement.length, start + replacement.length);
+    }, 50);
+  };
 
   // Estados para Examen / Boss Battle
   const [examCurrentQuestionIdx, setExamCurrentQuestionIdx] = useState(0);
@@ -281,6 +305,7 @@ export default function MissionPage({ params }: MissionPageProps) {
     setEvidenceReflection('');
     setMockFile(null);
     setIsSubmissionFinished(false);
+    setShowForm(false);
   };
 
   const simulateFileUpload = (type: 'image' | 'audio') => {
@@ -497,8 +522,14 @@ export default function MissionPage({ params }: MissionPageProps) {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-zinc-50 dark:bg-zinc-950">
+    <div className="min-h-screen flex flex-col bg-zinc-950 text-white relative">
       <Header />
+
+      {/* Background Starry/Glowing Aura */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+        <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] bg-purple-500/10 rounded-full blur-[150px] mix-blend-screen" />
+        <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-emerald-500/10 rounded-full blur-[150px] mix-blend-screen" />
+      </div>
 
       {/* Navegación y Título */}
       <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -541,111 +572,19 @@ export default function MissionPage({ params }: MissionPageProps) {
 
             {/* Camino de Retos (Derecha) */}
             <div className="lg:col-span-2 flex flex-col gap-6">
-              <h2 className="text-xl font-extrabold text-zinc-900 dark:text-white">Lista de Retos a Resolver</h2>
-              
-              <div className="flex flex-col gap-4">
-                {mission.quests?.map((quest, index) => {
-                  const status = getQuestStatus(quest.id);
-                  const isLocked = index > 0 && getQuestStatus(mission.quests![index - 1].id) !== 'completed';
-
-                  return (
-                    <div
-                      key={quest.id}
-                      className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border bg-white dark:bg-zinc-900 transition-all ${
-                        isLocked 
-                          ? 'opacity-40 border-zinc-200 dark:border-zinc-800' 
-                          : status === 'completed'
-                            ? 'border-emerald-200 bg-emerald-50/10 dark:border-emerald-900/30'
-                            : 'border-zinc-200 hover:border-zinc-300 dark:border-zinc-800'
-                      }`}
-                    >
-                      {/* Icono e Info */}
-                      <div className="flex gap-4 items-center font-bold">
-                        <div className={`p-3 rounded-xl ${
-                          isLocked 
-                            ? 'bg-zinc-100 text-zinc-400 dark:bg-zinc-950'
-                            : status === 'completed'
-                              ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400'
-                              : quest.type === 'exam'
-                                ? 'bg-purple-100 text-purple-650 dark:bg-purple-950 dark:text-purple-400'
-                                : 'bg-blue-100 text-blue-600 dark:bg-blue-950 dark:text-blue-400'
-                        }`}>
-                          {quest.type === 'exam' ? (
-                            <Trophy className="h-6 w-6 animate-bounce" />
-                          ) : quest.type === 'quiz' ? (
-                            <FileSpreadsheet className="h-6 w-6" />
-                          ) : (
-                            <AudioLines className="h-6 w-6" />
-                          )}
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] font-bold text-zinc-400">RETO {index + 1}</span>
-                            {status === 'completed' && (
-                              <span className="text-[9px] font-bold text-emerald-650 bg-emerald-50 dark:bg-emerald-950/60 dark:text-emerald-400 px-1.5 py-0.5 rounded-full font-black">
-                                ¡Completado!
-                              </span>
-                            )}
-                            {status === 'failed' && (
-                              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 dark:bg-rose-950/60 dark:text-rose-400 px-1.5 py-0.5 rounded-full font-black">
-                                Intentar de nuevo
-                              </span>
-                            )}
-                            {quest.type === 'exam' && (
-                              <span className="text-[9px] font-bold text-purple-600 bg-purple-50 dark:bg-purple-950/60 dark:text-purple-400 px-1.5 py-0.5 rounded-full font-black animate-pulse">
-                                ⚔️ BATALLA DE JEFE
-                              </span>
-                            )}
-                          </div>
-                          <h3 className="text-md font-bold text-zinc-900 dark:text-white mt-0.5">{quest.title}</h3>
-                          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 leading-normal max-w-md font-semibold">{quest.description}</p>
-                        </div>
-                      </div>
-
-                      {/* Botón y Recompensas */}
-                      <div className="flex items-center gap-4 self-stretch md:self-auto justify-between border-t md:border-t-0 pt-3 md:pt-0 border-zinc-100 dark:border-zinc-800">
-                        {/* Recompensas */}
-                        <div className="flex items-center gap-3 text-xs font-black">
-                          <span className="text-blue-500">{quest.xp_reward} XP</span>
-                          <span className="text-yellow-500 flex items-center gap-0.5">
-                            <Coins className="h-3.5 w-3.5 fill-current" />
-                            {quest.coins_reward}
-                          </span>
-                        </div>
-
-                        {/* Botón */}
-                        {isLocked ? (
-                          <div className="p-2 rounded-xl bg-zinc-100 text-zinc-400 dark:bg-zinc-800 flex items-center justify-center">
-                            <Lock className="h-4 w-4" />
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => {
-                              if (quest.type === 'exam') {
-                                startBossBattle(quest);
-                              } else if (quest.type === 'quiz') {
-                                startQuiz(quest);
-                              } else {
-                                startSubmission(quest);
-                              }
-                            }}
-                            className={`px-4 py-2 rounded-xl text-xs font-black text-white transition-all ${
-                              status === 'completed'
-                                ? 'bg-zinc-850 hover:bg-zinc-750 dark:bg-zinc-800 dark:hover:bg-zinc-700'
-                                : quest.type === 'exam'
-                                  ? 'bg-purple-600 hover:bg-purple-500 shadow-md shadow-purple-500/10'
-                                  : 'bg-blue-600 hover:bg-blue-500'
-                            }`}
-                          >
-                            {status === 'completed' ? 'Reintentar' : quest.type === 'exam' ? 'Desafiar Jefe ⚔️' : 'Jugar'}
-                          </button>
-                        )}
-                      </div>
-
-                    </div>
-                  );
-                })}
-              </div>
+              <QuestList
+                quests={mission.quests || []}
+                getQuestStatus={getQuestStatus}
+                onQuestClick={(quest) => {
+                  if (quest.type === 'exam') {
+                    startBossBattle(quest);
+                  } else if (quest.type === 'quiz') {
+                    startQuiz(quest);
+                  } else {
+                    startSubmission(quest);
+                  }
+                }}
+              />
             </div>
 
           </div>
@@ -818,151 +757,291 @@ export default function MissionPage({ params }: MissionPageProps) {
           </div>
         )}
 
-        {/* --- MODO INTERACTIVO: SEESAW-STYLE EVIDENCE SUBMISSION --- */}
+        {/* --- MODO INTERACTIVO: SEESAW-STYLE EVIDENCE SUBMISSION (REDISEÑADO JRPG) --- */}
         {isSubmittingEvidence && selectedQuest && (
-          <div className="max-w-2xl mx-auto bg-white dark:bg-zinc-900 rounded-3xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-2xl animate-scale-up">
+          <div className="max-w-4xl mx-auto bg-zinc-900/40 backdrop-blur-md border border-zinc-800 rounded-3xl shadow-2xl overflow-hidden animate-scale-up text-left">
             
-            {/* Header */}
-            <div className="px-6 py-4 bg-zinc-50 dark:bg-zinc-950 border-b border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
-              <div>
-                <span className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest">Portafolio de Evidencias Digital</span>
-                <h2 className="text-md font-bold text-zinc-900 dark:text-white">{selectedQuest.title}</h2>
+            {/* Header de la Misión */}
+            <div className="px-6 py-5 bg-zinc-950/80 border-b border-zinc-850 flex justify-between items-center relative">
+              <div className="flex flex-col gap-0.5">
+                <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Portafolio de Evidencias Digital
+                </span>
+                <h2 className="text-xl font-extrabold font-serif bg-gradient-to-r from-yellow-200 via-amber-300 to-yellow-500 bg-clip-text text-transparent mt-0.5">
+                  {selectedQuest.title}
+                </h2>
               </div>
               <button
                 onClick={() => {
                   setIsSubmittingEvidence(false);
                   setSelectedQuest(null);
                 }}
-                className="text-xs font-semibold text-zinc-400 hover:text-zinc-900 dark:hover:text-white"
+                className="px-4 py-2 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 rounded-xl text-xs font-bold text-zinc-400 hover:text-white transition-colors"
               >
-                Cerrar
+                Regresar a la Lista
               </button>
             </div>
 
             {!isSubmissionFinished ? (
-              <form onSubmit={handlePortfolioSubmit} className="p-6 flex flex-col gap-5">
-                {/* Instrucciones de la tarea */}
-                <div className="p-4 rounded-2xl bg-zinc-50 dark:bg-zinc-950 border border-zinc-200/50 dark:border-zinc-800/50">
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-1">INSTRUCCIONES DEL MAESTRO</p>
-                  <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed whitespace-pre-line">
-                    {(selectedQuest.content as any).instructions}
-                  </p>
-                </div>
-
-                {/* Simulador de Carga */}
-                <div>
-                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide mb-2">ADJUNTAR ARCHIVO DE EVIDENCIA</p>
+              <div className="p-6 sm:p-8 flex flex-col gap-6">
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
                   
-                  {!mockFile ? (
-                    <div className="border-2 border-dashed border-zinc-300 dark:border-zinc-700 rounded-2xl p-8 text-center flex flex-col items-center gap-3 bg-zinc-50/50 dark:bg-zinc-950/20">
-                      <Upload className="h-8 w-8 text-zinc-400" />
-                      <p className="text-xs text-zinc-500">Simula la carga de un archivo para completar la entrega</p>
-                      
-                      <div className="flex gap-2 mt-2">
-                        {((selectedQuest.content as any).acceptedFormats as string[]).includes('image') && (
-                          <button
-                            type="button"
-                            onClick={() => simulateFileUpload('image')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-300 text-xs font-semibold bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700"
-                          >
-                            <FileImage className="h-3.5 w-3.5" />
-                            Foto/Dibujo
-                          </button>
-                        )}
-                        {((selectedQuest.content as any).acceptedFormats as string[]).includes('audio') && (
-                          <button
-                            type="button"
-                            onClick={() => simulateFileUpload('audio')}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-zinc-200 hover:border-zinc-300 text-xs font-semibold bg-white text-zinc-700 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:border-zinc-700"
-                          >
-                            <Mic className="h-3.5 w-3.5" />
-                            Grabar Audio
-                          </button>
-                        )}
+                  {/* Columna Izquierda: Recursos Visuales */}
+                  <div className="lg:col-span-5 flex flex-col gap-5">
+                    {/* Imagen de Portada del Reto */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-wider block">
+                        Ilustración del Reto
+                      </span>
+                      <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 relative aspect-[4/3] group shadow-inner">
+                        <img
+                          src={
+                            mission.subject_id === 'sub-math'
+                              ? 'https://images.unsplash.com/photo-1635070041078-e363dbe005cb?q=80&w=800'
+                              : mission.subject_id === 'sub-sci'
+                                ? 'https://images.unsplash.com/photo-1532094349884-543bc11b234d?q=80&w=800'
+                                : 'https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?q=80&w=800'
+                          }
+                          alt="Portada del Reto"
+                          className="w-full h-full object-cover opacity-80 group-hover:scale-105 transition-transform duration-500"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-transparent opacity-60" />
                       </div>
                     </div>
-                  ) : (
-                    <div className="border border-emerald-100 bg-emerald-50/20 rounded-2xl p-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-xl bg-emerald-100 text-emerald-600 dark:bg-emerald-950 dark:text-emerald-400">
-                          {mockFile.type === 'image' ? (
-                            <FileImage className="h-5 w-5" />
+
+                    {/* Video Tutorial / Guía */}
+                    <div className="flex flex-col gap-1.5">
+                      <span className="text-[9px] font-black text-zinc-500 uppercase tracking-wider flex items-center gap-1">
+                        <Video className="h-3.5 w-3.5 text-zinc-500" />
+                        Video Tutorial del Reto
+                      </span>
+                      <div className="rounded-2xl overflow-hidden border border-zinc-800 bg-zinc-950 aspect-video shadow-lg">
+                        <iframe
+                          className="w-full h-full"
+                          src="https://www.youtube.com/embed/dQw4w9QwXcQ"
+                          title="Guía de Video de la Misión"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Columna Derecha: Instrucciones y Formulario */}
+                  <div className="lg:col-span-7 flex flex-col gap-6">
+                    {/* Instrucciones del maestro */}
+                    <div className="p-5 rounded-2xl bg-zinc-950/60 border border-zinc-850 shadow-inner">
+                      <h4 className="text-[10px] font-black text-zinc-400 uppercase tracking-wider mb-2">
+                        Instrucciones de la Misión
+                      </h4>
+                      <p className="text-xs text-zinc-300 leading-relaxed whitespace-pre-line font-medium">
+                        {(selectedQuest.content as any).instructions}
+                      </p>
+                    </div>
+
+                    {/* Recompensas de la Misión */}
+                    <div className="p-4 rounded-xl bg-zinc-950/30 border border-zinc-900 flex justify-between items-center text-xs">
+                      <span className="text-[10px] font-black text-zinc-500 uppercase">Botín Estimado</span>
+                      <div className="flex items-center gap-4 font-black">
+                        <span className="text-blue-400">+{selectedQuest.xp_reward} XP</span>
+                        <span className="text-yellow-500 flex items-center gap-0.5">
+                          <Coins className="h-4 w-4 fill-current" />
+                          +{selectedQuest.coins_reward}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Call to Action Button */}
+                    {!showForm && (
+                      <div className="py-6 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => setShowForm(true)}
+                          className="w-full py-4 rounded-2xl font-black text-sm text-zinc-950 bg-gradient-to-r from-yellow-400 via-amber-500 to-yellow-600 hover:from-yellow-300 hover:to-amber-500 hover:shadow-[0_0_25px_rgba(245,158,11,0.35)] hover:scale-[1.01] active:scale-[0.98] transition-all duration-300 uppercase tracking-widest flex items-center justify-center gap-2"
+                        >
+                          <Sparkles className="h-5 w-5 animate-pulse" />
+                          ¡Resuelve este Reto!
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Formulario de Entrega (Workspace) */}
+                    {showForm && (
+                      <form onSubmit={handlePortfolioSubmit} className="flex flex-col gap-5 animate-in slide-in-from-bottom-2 duration-300">
+                        {/* Editor de Respuesta */}
+                        <div className="flex flex-col gap-2">
+                          <label htmlFor="reflection" className="text-[10px] font-black text-zinc-400 uppercase tracking-wide">
+                            Tu Respuesta (Autoevaluación y Reflexión)
+                          </label>
+                          
+                          {/* Rich Text Toolbar */}
+                          <div className="flex items-center gap-1.5 p-2 bg-zinc-950 border border-zinc-850 rounded-t-2xl border-b-0">
+                            <button
+                              type="button"
+                              onClick={() => insertFormat('bold')}
+                              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                              title="Negrita"
+                            >
+                              <Bold className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => insertFormat('italic')}
+                              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                              title="Cursiva"
+                            >
+                              <Italic className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => insertFormat('list')}
+                              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                              title="Lista"
+                            >
+                              <List className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => insertFormat('header')}
+                              className="p-1.5 rounded hover:bg-zinc-800 text-zinc-400 hover:text-white"
+                              title="Título"
+                            >
+                              <Heading className="h-4 w-4" />
+                            </button>
+                            <div className="w-[1px] h-4 bg-zinc-800 mx-1" />
+                            <span className="text-[9px] font-black text-zinc-650 uppercase tracking-widest">Editor Markdown</span>
+                          </div>
+
+                          <textarea
+                            id="reflection"
+                            ref={textareaRef}
+                            value={evidenceReflection}
+                            onChange={(e) => setEvidenceReflection(e.target.value)}
+                            required
+                            placeholder="Escribe aquí tu explicación detallada de lo que hiciste en la actividad y tu reflexión sobre qué aprendiste."
+                            className="w-full text-xs p-3.5 rounded-b-2xl border border-zinc-850 bg-zinc-950/30 focus:border-emerald-500 focus:outline-none text-zinc-100 min-h-[120px] leading-relaxed shadow-inner"
+                          />
+                        </div>
+
+                        {/* Simulador de Carga */}
+                        <div className="flex flex-col gap-2">
+                          <p className="text-[10px] font-black text-zinc-400 uppercase tracking-wide">
+                            Adjuntar Evidencia del Reto
+                          </p>
+                          
+                          {!mockFile ? (
+                            <div className="border border-dashed border-zinc-800 rounded-2xl p-6 text-center flex flex-col items-center justify-center gap-3 bg-zinc-950/30">
+                              <Upload className="h-7 w-7 text-zinc-600" />
+                              <p className="text-[11px] text-zinc-500 font-medium">Adjunta capturas de tu libreta, bocetos, dibujos o grabaciones de voz</p>
+                              
+                              <div className="flex gap-2.5 mt-1">
+                                {((selectedQuest.content as any).acceptedFormats as string[]).includes('image') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => simulateFileUpload('image')}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-800 hover:border-zinc-700 hover:text-white text-xs font-bold bg-zinc-950 text-zinc-400 transition-colors"
+                                  >
+                                    <FileImage className="h-4 w-4 text-emerald-450" />
+                                    Foto / Dibujo
+                                  </button>
+                                )}
+                                {((selectedQuest.content as any).acceptedFormats as string[]).includes('audio') && (
+                                  <button
+                                    type="button"
+                                    onClick={() => simulateFileUpload('audio')}
+                                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-zinc-800 hover:border-zinc-700 hover:text-white text-xs font-bold bg-zinc-950 text-zinc-400 transition-colors"
+                                  >
+                                    <Mic className="h-4 w-4 text-purple-400" />
+                                    Grabar Audio
+                                  </button>
+                                )}
+                              </div>
+                            </div>
                           ) : (
-                            <Mic className="h-5 w-5" />
+                            <div className="border border-emerald-500/20 bg-emerald-950/10 rounded-2xl p-4 flex items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="p-2.5 rounded-xl bg-emerald-950 text-emerald-450 border border-emerald-500/35">
+                                  {mockFile.type === 'image' ? (
+                                    <FileImage className="h-5 w-5 animate-pulse" />
+                                  ) : (
+                                    <Mic className="h-5 w-5 animate-pulse" />
+                                  )}
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-xs font-bold text-zinc-100">
+                                    {mockFile.type === 'image' ? 'boceto_fraccionamiento.png' : 'grabacion_poema.mp3'}
+                                  </p>
+                                  <p className="text-[10px] text-zinc-500 uppercase tracking-wider mt-0.5">{mockFile.type === 'image' ? 'Imagen adjuntada' : 'Audio grabado'}</p>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => setMockFile(null)}
+                                className="text-xs text-rose-500 hover:text-rose-400 hover:underline font-bold"
+                              >
+                                Remover
+                              </button>
+                            </div>
                           )}
                         </div>
-                        <div>
-                          <p className="text-xs font-bold text-zinc-950 dark:text-white">
-                            {mockFile.type === 'image' ? 'dibujo_fracciones.jpg' : 'lectura_selva.mp3'}
-                          </p>
-                          <p className="text-[10px] text-zinc-400 uppercase">{mockFile.type === 'image' ? 'Imagen' : 'Audio'}</p>
+
+                        {/* Botones de Acción */}
+                        <div className="flex justify-end gap-3 mt-4 border-t border-zinc-850 pt-4">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShowForm(false);
+                            }}
+                            className="px-5 py-2.5 border border-zinc-850 hover:bg-zinc-800 rounded-xl font-bold text-xs text-zinc-400 hover:text-white transition-all"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            type="submit"
+                            disabled={!mockFile || !evidenceReflection}
+                            className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-650 hover:from-emerald-400 hover:to-teal-550 text-zinc-950 font-black text-xs shadow-md shadow-emerald-500/10 disabled:opacity-40 disabled:pointer-events-none transition-all"
+                          >
+                            Subir a mi Portafolio ⚔️
+                          </button>
                         </div>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setMockFile(null)}
-                        className="text-xs text-rose-500 hover:underline"
-                      >
-                        Remover
-                      </button>
-                    </div>
-                  )}
-                </div>
+                      </form>
+                    )}
+                  </div>
 
-                {/* Autoevaluación Formativa */}
-                <div className="flex flex-col gap-1.5">
-                  <label htmlFor="reflection" className="text-[10px] font-bold text-zinc-400 uppercase tracking-wide">
-                    MI AUTOEVALUACIÓN (MI REFLEXIÓN)
-                  </label>
-                  <textarea
-                    id="reflection"
-                    value={evidenceReflection}
-                    onChange={(e) => setEvidenceReflection(e.target.value)}
-                    required
-                    placeholder="Escribe aquí qué fue lo que más te gustó de esta tarea, qué se te facilitó o qué se te complicó al resolverla."
-                    className="w-full text-xs p-3 rounded-2xl border border-zinc-200 bg-transparent dark:border-zinc-800 focus:border-blue-500 focus:outline-none text-zinc-900 dark:text-white min-h-[90px]"
-                  />
                 </div>
-
-                {/* Botón de Enviar */}
-                <div className="flex justify-end gap-3 mt-2">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setIsSubmittingEvidence(false);
-                      setSelectedQuest(null);
-                    }}
-                    className="px-4 py-2 border border-zinc-200 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-950/40 rounded-full font-bold text-xs text-zinc-500"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={!mockFile || !evidenceReflection}
-                    className="px-5 py-2 rounded-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-500/10 disabled:opacity-40 disabled:pointer-events-none"
-                  >
-                    Subir a mi Portafolio
-                  </button>
-                </div>
-              </form>
+              </div>
             ) : (
-              // SUBMISSION FINISHED OVERLAY
-              <div className="p-8 text-center flex flex-col items-center justify-center gap-6">
-                <div className="h-20 w-20 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center animate-bounce">
-                  <CheckCircle2 className="h-10 w-10" />
+              // PANTALLA DE RECOMPENSA (REDISEÑO VICTORY JRPG)
+              <div className="p-8 text-center flex flex-col items-center justify-center gap-6 bg-gradient-to-b from-zinc-900 to-zinc-950">
+                <div className="relative">
+                  <div className="absolute inset-0 bg-emerald-500/20 blur-2xl rounded-full" />
+                  <div className="h-20 w-20 rounded-full bg-emerald-950 border border-emerald-500 text-emerald-400 flex items-center justify-center relative z-10 animate-bounce">
+                    <CheckCircle2 className="h-10 w-10 drop-shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
+                  </div>
                 </div>
 
                 <div>
-                  <h3 className="text-2xl font-black text-zinc-950 dark:text-white">¡Evidencia Subida!</h3>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-2 max-w-sm mx-auto">
-                    Tu trabajo ha sido guardado en tu Portafolio Digital de Evidencias. Tu maestro lo recibirá para revisarlo y enviarte feedback.
+                  <span className="text-[10px] font-black tracking-[0.25em] text-emerald-400 uppercase">
+                    ¡CONTRATO CUMPLIDO!
+                  </span>
+                  <h3 className="text-3xl font-black text-white font-serif mt-1">¡Evidencia Subida!</h3>
+                  <p className="text-xs text-zinc-400 mt-2.5 max-w-sm mx-auto leading-relaxed">
+                    Tu trabajo ha sido indexado en tu Portafolio Digital de Evidencias. Tu maestro ha recibido una notificación para revisar tu aventura.
                   </p>
                 </div>
 
                 {/* XP Recompensa */}
-                <div className="bg-zinc-50 dark:bg-zinc-950 p-4 rounded-2xl border border-zinc-200/50 dark:border-zinc-800/50 w-full max-w-xs text-center flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase">RECOMPENSA DE ENVÍO</span>
-                  <span className="text-md font-black text-emerald-600 mt-1">+50 XP y +10 Monedas</span>
+                <div className="bg-zinc-950/80 p-4.5 rounded-2xl border border-zinc-850 w-full max-w-xs text-center flex flex-col items-center justify-center shadow-inner">
+                  <span className="text-[9px] font-black text-zinc-500 uppercase tracking-widest">BOTÍN OBTENIDO</span>
+                  <span className="text-md font-black text-emerald-400 mt-1 flex items-center gap-2">
+                    <span>+{selectedQuest.xp_reward} XP</span>
+                    <span className="w-[1px] h-3 bg-zinc-800" />
+                    <span className="text-yellow-500 flex items-center gap-0.5">
+                      <Coins className="h-4 w-4 fill-current text-amber-500" />
+                      +{selectedQuest.coins_reward}
+                    </span>
+                  </span>
                 </div>
 
                 <button
@@ -970,7 +1049,7 @@ export default function MissionPage({ params }: MissionPageProps) {
                     setIsSubmittingEvidence(false);
                     setSelectedQuest(null);
                   }}
-                  className="px-6 py-2.5 bg-zinc-950 hover:bg-zinc-800 text-white rounded-full font-bold text-xs transition-all dark:bg-white dark:hover:bg-zinc-200 dark:text-black shadow-md"
+                  className="px-8 py-3 bg-white hover:bg-zinc-200 text-zinc-950 rounded-xl font-black text-xs shadow-lg transition-all active:scale-95 uppercase tracking-wider"
                 >
                   Regresar a la Misión
                 </button>

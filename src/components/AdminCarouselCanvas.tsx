@@ -444,7 +444,7 @@ export default function AdminCarouselCanvas({
         const currentItems = itemsRef.current;
         currentItems.forEach((item, idx) => {
           const cardNode = new PIXI.Container();
-          cardNode.name = `card_${idx}`;
+          cardNode.label = `card_${idx}`;
           (cardNode as any).itemId = item.id;
           (cardNode as any).itemCode = item.code;
           (cardNode as any).itemTitle = item.title;
@@ -457,26 +457,26 @@ export default function AdminCarouselCanvas({
 
           // 3.1 Sombra proyectada
           const shadowNode = new PIXI.Graphics();
-          shadowNode.name = "shadow";
+          shadowNode.label = "shadow";
           shadowNode.fill({ color: 0x000000, alpha: 0.45 });
-          shadowNode.drawEllipse(0, cardH / 2 + 10, cardW / 2 + 10, 14);
+          shadowNode.ellipse(0, cardH / 2 + 10, cardW / 2 + 10, 14);
           cardNode.addChild(shadowNode);
 
           // 3.2 Borde de selección brillante (Glow)
           const borderGlow = new PIXI.Graphics();
-          borderGlow.name = "glow";
+          borderGlow.label = "glow";
           // We draw a larger rounded rect that acts as a glowing border
           borderGlow.stroke({ width: 4, color: 0x3b82f6, alpha: 0 }); // Default alpha is 0
-          borderGlow.drawRoundedRect(-cardW / 2 - 2, -cardH / 2 - 2, cardW + 4, cardH + 4, 26);
+          borderGlow.roundRect(-cardW / 2 - 2, -cardH / 2 - 2, cardW + 4, cardH + 4, 26);
           cardNode.addChild(borderGlow);
 
           // 3.3 Cuerpo de la tarjeta
           const cardBody = new PIXI.Graphics();
-          cardBody.name = "body";
+          cardBody.label = "body";
           // Dark glassmorphic gradient simulation
           cardBody.fill({ color: 0x111827, alpha: 0.9 }); // Zinc 900
           cardBody.stroke({ width: 1.5, color: 0x374151 }); // Grey border
-          cardBody.drawRoundedRect(-cardW / 2, -cardH / 2, cardW, cardH, 24);
+          cardBody.roundRect(-cardW / 2, -cardH / 2, cardW, cardH, 24);
           cardNode.addChild(cardBody);
 
           // 3.4 Star Bookmark flag on top right
@@ -613,7 +613,7 @@ export default function AdminCarouselCanvas({
           const codeBg = new PIXI.Graphics();
           codeBg.fill({ color: item.themeColor, alpha: 0.15 });
           codeBg.stroke({ width: 1, color: item.themeColor, alpha: 0.6 });
-          codeBg.drawRoundedRect(-110, 138, 220, 30, 15);
+          codeBg.roundRect(-110, 138, 220, 30, 15);
           cardNode.addChild(codeBg);
 
           const codeText = new PIXI.Text({

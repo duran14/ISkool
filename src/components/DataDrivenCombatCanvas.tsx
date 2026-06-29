@@ -187,7 +187,7 @@ export default function DataDrivenCombatCanvas({
         // Sombra
         const sombra = new PIXI.Graphics();
         sombra.fill({ color: 0x000, alpha: 0.45 });
-        sombra.drawEllipse(0, 36, 26, 8);
+        sombra.ellipse(0, 36, 26, 8);
         charContainer.addChild(sombra);
 
         // --- JERARQUÍA ÓSEA (Bones) ---
@@ -260,7 +260,7 @@ export default function DataDrivenCombatCanvas({
 
       const bossSombra = new PIXI.Graphics();
       bossSombra.fill({ color: 0x000, alpha: 0.55 });
-      bossSombra.drawEllipse(0, 75, 50, 14);
+      bossSombra.ellipse(0, 75, 50, 14);
       boss.addChild(bossSombra);
 
       const bossEscudo = new PIXI.Graphics();

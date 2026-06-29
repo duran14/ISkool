@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { 
@@ -150,6 +150,44 @@ export default function AdminDashboard() {
 
   const [colegios, setColegios] = useState<CarouselItem[]>(COLEGIOS_DATA);
   const [materias, setMaterias] = useState<CarouselItem[]>(MATERIAS_DATA);
+  const [isInitialized, setIsInitialized] = useState(false);
+
+  // Cargar datos desde localStorage al montar el componente
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedColegios = localStorage.getItem('iskool_colegios_data');
+      if (storedColegios) {
+        try {
+          setColegios(JSON.parse(storedColegios));
+        } catch (e) {
+          console.error("Error parsing stored colegios:", e);
+        }
+      }
+      const storedMaterias = localStorage.getItem('iskool_materias_data');
+      if (storedMaterias) {
+        try {
+          setMaterias(JSON.parse(storedMaterias));
+        } catch (e) {
+          console.error("Error parsing stored materias:", e);
+        }
+      }
+      setIsInitialized(true);
+    }
+  }, []);
+
+  // Guardar colegios en localStorage tras cambios iniciados por el usuario
+  useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      localStorage.setItem('iskool_colegios_data', JSON.stringify(colegios));
+    }
+  }, [colegios, isInitialized]);
+
+  // Guardar materias en localStorage tras cambios iniciados por el usuario
+  useEffect(() => {
+    if (isInitialized && typeof window !== 'undefined') {
+      localStorage.setItem('iskool_materias_data', JSON.stringify(materias));
+    }
+  }, [materias, isInitialized]);
 
   // Modal states for creation
   const [showCreateModal, setShowCreateModal] = useState(false);

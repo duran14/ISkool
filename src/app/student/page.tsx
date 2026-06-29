@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar } from '@/store/useStudentStore';
+import { useStudentStore, useCurrentStudentStats, useCurrentStudentAvatar, normalizeStudentId } from '@/store/useStudentStore';
 import { useGamificationStore } from '@/store/useGamificationStore';
 import { usePortfolioStore } from '@/store/usePortfolioStore';
 import { useSchoolAdminStore } from '@/store/useSchoolAdminStore';
@@ -9,6 +9,7 @@ import { BADGES_SEED } from '@/store/seeds';
 import { Header } from '@/components/Header';
 import { AvatarCustomizer } from '@/components/AvatarCustomizer';
 import { RpgCombatViewport } from '@/components/RpgCombatViewport';
+import AdventureCarousel from '@/components/AdventureCarousel';
 import { 
   Flame, Coins, Sparkles, Compass, Trophy, Star, ArrowRight, 
   Lock, Heart, HelpCircle, Gamepad2, Dumbbell, Brain, Shield,
@@ -117,9 +118,10 @@ export default function StudentDashboard() {
 
   const detailedStudents = useSchoolAdminStore(state => state.detailedStudents);
 
-  const ownedArtifactIds = studentInventoryMap[activeStudentId] || [];
+  const normalizedId = normalizeStudentId(activeStudentId);
+  const ownedArtifactIds = studentInventoryMap[activeStudentId] || studentInventoryMap[normalizedId] || [];
 
-  const activeStudent = detailedStudents?.find(s => s.id === activeStudentId);
+  const activeStudent = detailedStudents?.find(s => s.id === normalizedId) || detailedStudents?.find(s => s.id === activeStudentId);
   const activeLevel = activeStudent?.level || 'preparatoria';
   const activeGrade = activeStudent?.grade || '1º';
 
@@ -664,26 +666,9 @@ export default function StudentDashboard() {
           <RpgCombatViewport />
         </div>
 
-        {/* Tablero de Gremios / Contratos de Secundaria */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {missions.map(mission => (
-            <div key={mission.id} className="rounded-2xl border border-zinc-800 bg-zinc-900 p-5 flex flex-col justify-between shadow-lg text-white">
-              <div>
-                <span className="px-2 py-0.5 rounded bg-purple-950 text-[10px] text-purple-300 font-bold uppercase tracking-wider">
-                  Contrato de Gremio
-                </span>
-                <h3 className="text-md font-bold mt-2 text-white">{mission.title}</h3>
-                <p className="text-xs text-zinc-400 mt-1 leading-relaxed">{mission.description}</p>
-              </div>
-              <Link
-                href={`/student/missions/${mission.id}`}
-                className="w-full text-center mt-5 bg-purple-700 hover:bg-purple-600 py-2.5 rounded-xl text-xs font-bold text-white transition-all flex items-center justify-center gap-1.5 shadow-lg shadow-purple-500/10"
-              >
-                Aceptar Contrato Académico
-                <ArrowRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
-          ))}
+        {/* Tablero de Gremios / Contratos de Secundaria - Carrusel 3D */}
+        <div className="w-full">
+          <AdventureCarousel missions={missions} />
         </div>
 
 

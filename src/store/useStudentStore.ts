@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { useMemo } from 'react';
 import { StudentStats, StudentAvatar, StudentMessage, UserProfile } from '../types';
 import { STATS_MAP_SEED, AVATAR_MAP_SEED, STUDENT_INVENTORY_SEED, STUDENT_MESSAGES_SEED, STUDENTS_LIST_SEED } from './seeds';
 import { supabase } from '@/lib/supabaseClient';
@@ -432,29 +433,43 @@ export const useStudentStore = create<StudentStoreState>((set, get) => ({
   },
 }));
 
+export const normalizeStudentId = (id: string): string => {
+  if (id === 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a11') return 'std-pa';
+  if (id === 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a22') return 'std-sec';
+  if (id === 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a33') return 'std-pb';
+  if (id === 'c00a0eeb-9c0b-4ef8-bb6d-6bb9bd380a44') return 'std-prep';
+  return id;
+};
+
 // Selectores React
 export const useCurrentStudentStats = () => {
-  return useStudentStore(state => {
-    const active = state.allStats[state.activeStudentId] || STATS_MAP_SEED[state.activeStudentId];
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const stats = useStudentStore(state => state.allStats[activeStudentId]);
+  
+  return useMemo(() => {
+    const active = stats || STATS_MAP_SEED[activeStudentId] || STATS_MAP_SEED[normalizeStudentId(activeStudentId)];
     if (active) return active;
     return {
-      student_id: state.activeStudentId,
+      student_id: activeStudentId,
       xp: 0,
       level: 1,
       coins: 0,
       current_streak: 1,
       max_streak: 1,
-      updated_at: new Date().toISOString()
+      updated_at: ''
     };
-  });
+  }, [stats, activeStudentId]);
 };
 
 export const useCurrentStudentAvatar = () => {
-  return useStudentStore(state => {
-    const active = state.allAvatars[state.activeStudentId] || AVATAR_MAP_SEED[state.activeStudentId];
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  const avatar = useStudentStore(state => state.allAvatars[activeStudentId]);
+  
+  return useMemo(() => {
+    const active = avatar || AVATAR_MAP_SEED[activeStudentId] || AVATAR_MAP_SEED[normalizeStudentId(activeStudentId)];
     if (active) return active;
     return {
-      student_id: state.activeStudentId,
+      student_id: activeStudentId,
       avatar_name: 'Estudiante',
       hair_style: 'classic',
       hair_color: '#4B5563',
@@ -463,14 +478,15 @@ export const useCurrentStudentAvatar = () => {
       outfit_color: '#3B82F6',
       background_style: 'forest',
       unlocked_items: ['classic', 'happy', 'explorer', 'forest'],
-      updated_at: new Date().toISOString()
+      updated_at: ''
     };
-  });
+  }, [avatar, activeStudentId]);
 };
 
 export const useCurrentStudentProfile = () => {
-  return useStudentStore(state => {
-    const activeStudentId = state.activeStudentId;
-    return STUDENTS_LIST_SEED.find(s => s.id === activeStudentId) || STUDENTS_LIST_SEED[1];
-  });
+  const activeStudentId = useStudentStore(state => state.activeStudentId);
+  return useMemo(() => {
+    const norm = normalizeStudentId(activeStudentId);
+    return STUDENTS_LIST_SEED.find(s => s.id === norm) || STUDENTS_LIST_SEED.find(s => s.id === activeStudentId) || STUDENTS_LIST_SEED[1];
+  }, [activeStudentId]);
 };
