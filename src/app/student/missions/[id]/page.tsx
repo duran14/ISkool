@@ -226,8 +226,60 @@ export default function MissionPage({ params }: MissionPageProps) {
     }
   }, [user, fetchStats, fetchMissions]);
 
-  // Buscar misión
-  const mission = missions.find(m => m.id === id);
+  // Helper to normalize seed IDs to real database UUIDs
+  const normalizeMissionOrQuestId = (targetId: string): string => {
+    if (targetId === 'mis-selva') return 'd00a0eeb-9c0b-4ef8-bb6d-7e9aa39842e5';
+    if (targetId === 'mis-fractions') return 'd00a0eeb-9c0b-4ef8-bb6d-6bb9bd380d11';
+    if (targetId === 'qst-selva-1' || targetId === 'qst-selva-2' || targetId === 'qst-selva-3') return 'e00a0eeb-9c0b-4ef8-bb6d-44072205c41a';
+    if (targetId === 'qst-fractions-1' || targetId === 'qst-fractions-2') return 'e00a0eeb-9c0b-4ef8-bb6d-69bad5a8a9ca';
+    return targetId;
+  };
+
+  const normalizedId = normalizeMissionOrQuestId(id);
+
+  // Buscar misión (por su ID propio o por el ID de uno de sus retos)
+  const mission = missions.find(m => m.id === normalizedId || m.quests?.some(q => q.id === normalizedId));
+
+  // Auto-cargar el reto seleccionado si el ID de la URL corresponde a un reto (ej. qst-selva-1 o UUID correspondiente)
+  useEffect(() => {
+    if (mission && normalizedId) {
+      const isQuestId = normalizedId.startsWith('qst-') || normalizedId === 'e00a0eeb-9c0b-4ef8-bb6d-44072205c41a' || normalizedId === 'e00a0eeb-9c0b-4ef8-bb6d-69bad5a8a9ca';
+      if (isQuestId) {
+        const targetQuest = mission.quests?.find(q => q.id === normalizedId || q.id === 'e00a0eeb-9c0b-4ef8-bb6d-44072205c41a' || q.id === 'e00a0eeb-9c0b-4ef8-bb6d-69bad5a8a9ca');
+        if (targetQuest) {
+          // Asegurarnos de que no reiniciemos el estado si ya está seleccionado
+          if (selectedQuest?.id !== targetQuest.id) {
+            setSelectedQuest(targetQuest);
+            if (targetQuest.type === 'exam') {
+              setIsPlayingExam(true);
+              setBossBattlePhase('intro');
+              setCanvasCombatState('idle');
+              setPlayerHp(100);
+              setBossHp(targetQuest.content?.bossHp || 100);
+              setBossMaxHp(targetQuest.content?.bossHp || 100);
+              setCombatLog(['⚔️ ¡El Jefe del Gremio ha aparecido!']);
+            } else if (targetQuest.type === 'quiz') {
+              setIsPlayingQuiz(true);
+              setCurrentQuestionIdx(0);
+              setSelectedOptionIdx(null);
+              setIsAnswerSubmitted(false);
+              setQuizScore(0);
+              setQuizAnswers({});
+              setTimer(20);
+              setQuizResult(null);
+            } else {
+              setIsSubmittingEvidence(true);
+              setEvidenceTitle('');
+              setEvidenceDesc('');
+              setEvidenceReflection('');
+              setMockFile(null);
+              setIsSubmissionFinished(false);
+            }
+          }
+        }
+      }
+    }
+  }, [mission, normalizedId, selectedQuest]);
   
   // Cuestionario (Quiz State)
   const [currentQuestionIdx, setCurrentQuestionIdx] = useState(0);

@@ -6,6 +6,7 @@ import {
   BookOpen, Brain, Swords, Compass, HelpCircle, MapPin
 } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Mission } from '@/types';
 
 interface AdventureCarouselProps {
@@ -29,8 +30,18 @@ interface ExtendedCard {
 }
 
 export default function AdventureCarousel({ missions }: AdventureCarouselProps) {
+  const router = useRouter();
   const [activeIndex, setActiveIndex] = useState(0);
   const [cards, setCards] = useState<ExtendedCard[]>([]);
+
+  const handleCardClick = (card: ExtendedCard, isActive: boolean) => {
+    if (!isActive) return;
+    if (card.isLocked) {
+      alert(`🔒 ¡Aventura Bloqueada! Requiere Nivel ${card.minLevel || 5} para desbloquear este contrato.`);
+      return;
+    }
+    router.push(`/student/missions/${card.id}`);
+  };
 
   // Build the list of cards, combining real missions with immersive locked RPG placeholders
   useEffect(() => {
@@ -217,14 +228,20 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
               <div
                 key={card.id}
                 onClick={() => {
-                  if (!isActive) {
+                  if (card.isLocked) {
+                    alert(`🔒 ¡Aventura Bloqueada! Requiere Nivel ${card.minLevel || 5} para desbloquear este contrato.`);
+                    return;
+                  }
+                  if (isActive) {
+                    handleCardClick(card, isActive);
+                  } else {
                     setActiveIndex(index);
                   }
                 }}
-                className={`absolute w-[290px] md:w-[320px] h-[390px] rounded-2xl border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] cursor-pointer flex flex-col justify-between p-6 ${
+                className={`absolute w-[290px] md:w-[320px] h-[390px] rounded-2xl border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between p-6 ${
                   isActive 
-                    ? 'border-amber-500/60 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.8)] shadow-amber-500/20' 
-                    : 'border-zinc-800 hover:border-zinc-700 hover:opacity-80'
+                    ? card.isLocked ? 'border-rose-500/40 cursor-not-allowed' : 'border-amber-500/60 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.8)] shadow-amber-500/20 cursor-pointer' 
+                    : 'border-zinc-800 hover:border-zinc-700 hover:opacity-80 cursor-pointer'
                 } bg-gradient-to-b ${card.backgroundImage}`}
                 style={{
                   transform: `translateX(${translateX}px) translateZ(${translateZ}px) rotateY(${rotateY}deg) scale(${scale})`,

@@ -4,6 +4,7 @@ import React from 'react';
 import { 
   Trophy, FileSpreadsheet, AudioLines, Lock, Coins, CheckCircle2, XCircle, Sparkles, Swords
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Quest } from '@/types';
 
 interface QuestListProps {
@@ -13,6 +14,7 @@ interface QuestListProps {
 }
 
 export default function QuestList({ quests, getQuestStatus, onQuestClick }: QuestListProps) {
+  const router = useRouter();
   return (
     <div className="w-full flex flex-col gap-6 bg-zinc-950/60 p-6 sm:p-8 rounded-3xl border border-zinc-900 shadow-2xl backdrop-blur-md relative overflow-hidden">
       
@@ -67,7 +69,14 @@ export default function QuestList({ quests, getQuestStatus, onQuestClick }: Ques
           return (
             <div
               key={quest.id}
-              className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border transition-all duration-350 ${itemBorderClass} ${hoverGlowClass}`}
+              onClick={() => {
+                if (isLocked) {
+                  alert('🔒 Reto Bloqueado: Completa el reto anterior para desbloquear este contrato.');
+                  return;
+                }
+                router.push(`/student/missions/${quest.id}`);
+              }}
+              className={`flex flex-col md:flex-row items-start md:items-center justify-between gap-4 p-5 rounded-2xl border transition-all duration-350 ${itemBorderClass} ${hoverGlowClass} ${isLocked ? 'cursor-not-allowed' : 'cursor-pointer hover:scale-[1.005]'}`}
             >
               {/* Left Column: Icon and Info */}
               <div className="flex gap-4 items-center">
@@ -137,7 +146,10 @@ export default function QuestList({ quests, getQuestStatus, onQuestClick }: Ques
                   </div>
                 ) : (
                   <button
-                    onClick={() => onQuestClick(quest)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Evitar que el clic en el botón se duplique
+                      router.push(`/student/missions/${quest.id}`);
+                    }}
                     className={`px-4.5 py-2.5 rounded-xl text-xs font-black text-zinc-950 transition-all duration-300 flex items-center gap-1.5 active:scale-95 ${
                       isCompleted
                         ? 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700 border border-zinc-700/50'
