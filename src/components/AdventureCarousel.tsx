@@ -37,7 +37,7 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
   const handleCardClick = (card: ExtendedCard, isActive: boolean) => {
     if (!isActive) return;
     if (card.isLocked) {
-      alert(`🔒 ¡Aventura Bloqueada! Requiere Nivel ${card.minLevel || 5} para desbloquear este contrato.`);
+      alert('Nivel insuficiente para desbloquear esta aventura');
       return;
     }
     router.push(`/student/missions/${card.id}`);
@@ -229,7 +229,7 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
                 key={card.id}
                 onClick={() => {
                   if (card.isLocked) {
-                    alert(`🔒 ¡Aventura Bloqueada! Requiere Nivel ${card.minLevel || 5} para desbloquear este contrato.`);
+                    alert('Nivel insuficiente para desbloquear esta aventura');
                     return;
                   }
                   if (isActive) {
@@ -240,7 +240,7 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
                 }}
                 className={`absolute w-[290px] md:w-[320px] h-[390px] rounded-2xl border transition-all duration-500 ease-[cubic-bezier(0.25,1,0.5,1)] flex flex-col justify-between p-6 ${
                   isActive 
-                    ? card.isLocked ? 'border-rose-500/40 cursor-not-allowed' : 'border-amber-500/60 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.8)] shadow-amber-500/20 cursor-pointer' 
+                    ? card.isLocked ? 'border-rose-500/40 cursor-not-allowed opacity-50' : 'border-amber-500/60 shadow-[0_10px_35px_-5px_rgba(0,0,0,0.8)] shadow-amber-500/20 cursor-pointer' 
                     : 'border-zinc-800 hover:border-zinc-700 hover:opacity-80 cursor-pointer'
                 } bg-gradient-to-b ${card.backgroundImage}`}
                 style={{
@@ -324,10 +324,10 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
                   {card.isLocked ? (
                     <button
                       disabled
-                      className="w-full py-2.5 bg-zinc-900 text-zinc-600 border border-zinc-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed"
+                      className="w-full py-2.5 bg-zinc-900 text-zinc-650 border border-zinc-850 rounded-xl text-xs font-bold flex items-center justify-center gap-2 cursor-not-allowed opacity-50 pointer-events-none"
                     >
                       <Lock className="h-3.5 w-3.5" />
-                      Aventura Bloqueada
+                      Nivel insuficiente
                     </button>
                   ) : (
                     <Link
@@ -338,14 +338,14 @@ export default function AdventureCarousel({ missions }: AdventureCarouselProps) 
                           e.preventDefault();
                         }
                       }}
-                      className={`w-full text-center py-2.5 rounded-xl text-xs font-bold text-zinc-950 transition-all duration-300 flex items-center justify-center gap-2 ${
+                      className={`w-full text-center py-3 rounded-xl text-xs font-black text-zinc-950 transition-all duration-300 flex items-center justify-center gap-2 tracking-wider uppercase ${
                         isActive 
-                          ? 'bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 shadow-md shadow-amber-500/20 active:scale-95' 
+                          ? 'bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 hover:shadow-[0_0_20px_rgba(245,158,11,0.45)] hover:scale-[1.01] active:scale-[0.98]' 
                           : 'bg-zinc-800 text-zinc-400 pointer-events-none'
                       }`}
                     >
                       <Swords className="h-4 w-4 stroke-[2.5]" />
-                      Aceptar Contrato Académico
+                      ¡INICIAR RETO! ⚡
                     </Link>
                   )}
                 </div>
